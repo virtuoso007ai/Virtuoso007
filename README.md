@@ -10,11 +10,21 @@ Birden fazla ACP agent’ı için Telegram’dan `perp_trade` (aç/kapa) ve `per
 
 Bu workspace’te `**/config.json` araması yalnızca **bu tek dosyayı** buldu; agent adlı alt projeler veya ek `config.json` yok.
 
-### Mevcut anahtarlar
+### Birden fazla proje (D:\\ üzerinde)
 
-`virtuals-protocol-acp/config.json` içinde **yalnızca bir** agent kaydı var: **Super Saiyan Raichu** (tek `acp-...` hem `LITE_AGENT_API_KEY` hem `agents[0].apiKey` için). Wolf (Taxerclaw), Pokedex, Welles Wilder ve Ichimoku için **bu dosyada ikinci/üçüncü `agents[]` girdisi yok** — anahtarlar başka ortamda veya henüz oluşturulmamış. Diğer agent’ları eklediğinde: aynı `config.json` içinde `agents` dizisine yeni objeler ekle; Telegram botu `npm run sync:agents` ile hepsini okur. Eksikleri geçici olarak `agents.manual.json` ile tamamlayabilirsin (git’e girmez).
+Super Saiyan Raichu bu repoda (`super-saiyan-raichu/virtuals-protocol-acp/config.json`). Diğer agent’ların ACP anahtarları **ayrı klasörlerdeki** kendi `config.json` dosyalarında olabilir. `npm run sync:agents` şunları **otomatik** tarar (varsa):
 
-- **Lokal senkron:** `npm run sync:agents` → `virtuals-protocol-acp/config.json` + varsa `agents.manual.json` → `agents.local.json`.
+| Proje klasörü (D:\\) | Config yolu |
+| --- | --- |
+| `super-saiyan-raichu` | `virtuals-protocol-acp/config.json` (birincil) |
+| `ichimoku-kinko-hyo` | `virtuals-protocol-acp/config.json` |
+| `pokedex` | `virtuals-protocol-acp/config.json` |
+| `welles-wilder` | `virtuals-protocol-acp/config.json` |
+| `wolfy-agent` | `virtuals-agent/config.json` (TaXerClaw → alias `taxerclaw`) |
+
+Başka sürücü veya farklı yol için: `ACP_CONFIG_PATHS` ortam değişkenine virgülle tam dosya yolları ver (bu durumda yalnızca birincil `ACP_CONFIG_PATH` + bu liste kullanılır; kardeş klasör taraması devre dışı kalır).
+
+- **Lokal senkron:** `npm run sync:agents` → yukarıdaki dosyalar + varsa `agents.manual.json` → `agents.local.json`.
 - **Railway tek satır env:** `npm run sync:agents:railway` çıktısını `AGENTS_JSON` olarak yapıştır (manuel anahtarlar `agents.manual.json` doldurulduktan sonra).
 
 Varsayılan orkestra alias eşlemesi (isimden otomatik):

@@ -1,6 +1,9 @@
 /**
- * virtuals-protocol-acp/config.json içindeki agents[] + opsiyonel agents.manual.json
- * → agents.local.json (gitignore). Railway için: npm run sync:agents:railway
+ * Birden fazla ACP/virtuals config.json (D:\ üzerindeki kardeş projeler dahil)
+ * → agents.local.json (gitignore). Railway: npm run sync:agents:railway
+ *
+ * ACP_CONFIG_PATH — birincil config (varsayılan: ../virtuals-protocol-acp/config.json)
+ * ACP_CONFIG_PATHS — ekstra tam yollar, virgülle (opsiyonel; set edilirse kardeş tarama atlanır)
  */
 import fs from "fs";
 import path from "path";
@@ -10,9 +13,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 const defaultAcpConfig = path.join(root, "..", "virtuals-protocol-acp", "config.json");
 
+/** İsim → Telegram alias (sıra önemli: daha spesifik desenler önce) */
 const NAME_TO_ALIAS = [
   [/super\s*saiyan\s*raichu/i, "raichu"],
-  [/taxerclaw|wolf\s*agent/i, "taxerclaw"],
+  [/taxerclaw/i, "taxerclaw"],
+  [/wolfy\s*agent/i, "taxerclaw"],
+  [/wolf\s*agent/i, "taxerclaw"],
   [/pokedex/i, "pokedex"],
   [/welles\s*wilder/i, "welles"],
   [/ichimoku/i, "ichimoku"],
@@ -35,25 +41,91 @@ function loadJson(p) {
   return JSON.parse(fs.readFileSync(p, "utf8"));
 }
 
-function main() {
-  const configPath = path.resolve(process.env.ACP_CONFIG_PATH || defaultAcpConfig);
-  if (!fs.existsSync(configPath)) {
-    console.error("ACP config bulunamadı:", configPath);
-    console.error("ACP_CONFIG_PATH ile dosya yolunu ver veya virtuals-protocol-acp/config.json ekle.");
-    process.exit(1);
-  }
-  const cfg = loadJson(configPath);
-  /** @type {Map<string, { alias: string; apiKey: string; label?: string }>} */
-  const map = new Map();
+/** Üst klasör (genelde D:\) — super-saiyan-raichu\telegram-degen-bot → iki üst */
+function siblingRootDir() {
+  return path.join(root, "..", "..");
+}
 
+/**
+ * @returns {string[]}
+ */
+function resolveConfigPaths() {
+  const primary = path.resolve(process.env.ACP_CONFIG_PATH || defaultAcpConfig);
+  const paths = [];
+  const seen = new Set();
+
+  function add(p) {
+    const abs = path.resolve(p);
+    if (!seen.has(abs)) {
+      seen.add(abs);
+      paths.push(abs);
+    }
+  }
+
+  add(primary);
+
+  if (process.env.ACP_CONFIG_PATHS?.trim()) {
+    for (const raw of process.env.ACP_CONFIG_PATHS.split(/[,;\n]+/)) {
+      const t = raw.trim();
+      if (t) add(t);
+    }
+    return paths;
+  }
+
+  const base = siblingRootDir();
+  const optional = [
+    path.join(base, "ichimoku-kinko-hyo", "virtuals-protocol-acp", "config.json"),
+    path.join(base, "pokedex", "virtuals-protocol-acp", "config.json"),
+    path.join(base, "welles-wilder", "virtuals-protocol-acp", "config.json"),
+    path.join(base, "wolfy-agent", "virtuals-agent", "config.json"),
+  ];
+  for (const p of optional) {
+    if (fs.existsSync(p)) add(p);
+  }
+  return paths;
+}
+
+/**
+ * @param {string} configPath
+ * @param {Map<string, { alias: string; apiKey: string; label?: string }>} map
+ */
+function ingestAgentsFromFile(configPath, map) {
+  const cfg = loadJson(configPath);
+  let n = 0;
   for (const a of cfg.agents ?? []) {
     if (!a?.apiKey) continue;
     const alias = aliasForName(a.name);
+    if (map.has(alias)) {
+      console.warn(`[sync] Yinelenen alias atlandı (${alias}): ${configPath}`);
+      continue;
+    }
     map.set(alias, {
       alias,
       apiKey: String(a.apiKey).trim(),
       label: a.name || alias,
     });
+    n += 1;
+  }
+  console.log(`[sync] ${configPath} → ${n} agent (apiKey’li)`);
+}
+
+function main() {
+  const paths = resolveConfigPaths();
+  if (!paths.length || !fs.existsSync(paths[0])) {
+    console.error("Birincil ACP config bulunamadı:", paths[0] || defaultAcpConfig);
+    process.exit(1);
+  }
+
+  /** @type {Map<string, { alias: string; apiKey: string; label?: string }>} */
+  const map = new Map();
+
+  console.log("[sync] Config dosyaları:");
+  for (const p of paths) {
+    if (!fs.existsSync(p)) {
+      console.warn("[sync] Atlandı (yok):", p);
+      continue;
+    }
+    ingestAgentsFromFile(p, map);
   }
 
   const manualPath = path.join(root, "agents.manual.json");
@@ -74,12 +146,13 @@ function main() {
         label: m.label?.trim() || alias,
       });
     }
+    console.log("[sync] agents.manual.json birleştirildi");
   }
 
-  const out = [...map.values()];
+  const out = [...map.values()].sort((a, b) => a.alias.localeCompare(b.alias));
   if (out.length === 0) {
     console.error(
-      "Hiç agent yok. virtuals-protocol-acp içinde agents[].apiKey tanımlı olmalı ve/veya agents.manual.json (örnek: agents.manual.example.json)."
+      "Hiç agent yok. D:\\ üzerindeki kardeş projelerde config.json yoksa ACP_CONFIG_PATHS ile yolları ver."
     );
     process.exit(1);
   }
