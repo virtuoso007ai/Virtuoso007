@@ -4,6 +4,7 @@ import type { AgentEntry } from "./agents.js";
 import { getAgent } from "./agents.js";
 import { createAcpClient, jobPerpClose, jobPerpModify, jobPerpOpen } from "./acp.js";
 import { fetchDgPositions, formatPositionBlock } from "./positions.js";
+import { resolveWalletAddress } from "./wallet-resolve.js";
 
 const HELP = `Degen Claw — komutlar (/agents ile alias doğrula)
 
@@ -138,12 +139,15 @@ export function registerBot(
       await ctx.reply("Pozisyonlar çekiliyor…");
       const blocks: string[] = [];
       for (const a of [...agents.values()].sort((x, y) => x.alias.localeCompare(y.alias))) {
-        if (!a.walletAddress?.trim()) {
-          blocks.push(`${a.alias} — cüzdan yok (walletAddress)`);
+        const w = await resolveWalletAddress(a);
+        if (!w) {
+          blocks.push(
+            `${a.alias} — cüzdan alınamadı (AGENTS_JSON’da walletAddress veya geçerli apiKey ile /acp/me)`
+          );
           continue;
         }
         try {
-          const rows = await fetchDgPositions(a.walletAddress);
+          const rows = await fetchDgPositions(w);
           blocks.push(formatPositionBlock(a.alias, a.label, rows));
         } catch (e) {
           blocks.push(`${a.alias} — ${errText(e).slice(0, 280)}`);
@@ -158,16 +162,18 @@ export function registerBot(
       await ctx.reply("Geçersiz alias. /agents");
       return;
     }
-    if (!agent.walletAddress?.trim()) {
+
+    const wallet = await resolveWalletAddress(agent);
+    if (!wallet) {
       await ctx.reply(
-        "Bu agent için walletAddress yok. `npm run sync:agents` (config’te cüzdan) veya AGENTS_JSON’a ekle."
+        "Cüzdan bulunamadı. apiKey ile ACP GET /acp/me cevap vermiyorsa `walletAddress` ekle veya anahtarı kontrol et."
       );
       return;
     }
 
     await ctx.reply("Çekiliyor…");
     try {
-      const rows = await fetchDgPositions(agent.walletAddress);
+      const rows = await fetchDgPositions(wallet);
       await replyChunked(ctx, formatPositionBlock(agent.alias, agent.label, rows));
     } catch (e) {
       await ctx.reply(`Hata: ${errText(e).slice(0, 3500)}`);

@@ -67,7 +67,7 @@ Anahtarları ve `.env` asla commit etme; sadece `agents.example.json` (placehold
 3. **Variables**:
    - `TELEGRAM_BOT_TOKEN` — BotFather’dan ([Bot API](https://core.telegram.org/bots/api))
    - `ALLOWED_CHAT_IDS` — Telegram’daki sayısal sohbet/kullanıcı ID’n (virgülle birden fazla); boş bırakma (önerilmez)
-   - `AGENTS_JSON` — tek satır JSON dizi (`alias`, `apiKey`, `label`, **`walletAddress`** — Degen Claw açık pozlar için), veya `AGENTS_JSON_PATH`
+   - `AGENTS_JSON` — tek satır JSON dizi (`alias`, `apiKey`, `label`; **`walletAddress` isteğe bağlı** — yoksa bot `GET /acp/me` ile cüzdanı anahtardan çeker; `/positions` için yeterli), veya `AGENTS_JSON_PATH`
    - İsteğe bağlı: `ACP_BUILDER_CODE`, `ACP_API_URL`, `DGCLAW_APP_URL` (varsayılan [dgclaw-app-production](https://dgclaw-app-production.up.railway.app))
 4. **Deploy** — `Dockerfile` ile build alır; `PORT` Railway tarafından set edilir (health check).
 
@@ -91,7 +91,7 @@ npm run dev
 | `/positions` veya `/poz` | `/positions raichu` veya `/positions all` — Degen Claw [positions](https://dgclaw-app-production.up.railway.app/users/…/positions) |
 | `/agents` | Kayıtlı alias’lar |
 
-VIRTUAL için `size` = **coin adedi** (USDC değil). `walletAddress` `npm run sync:agents` ile ACP `config.json`’dan gelir.
+VIRTUAL için `size` = **coin adedi** (USDC değil). `walletAddress` sync ile eklenebilir; eklenmezse yine de `/positions` çalışır (ACP `apiKey` → `/acp/me`).
 
 ## Güvenlik
 
