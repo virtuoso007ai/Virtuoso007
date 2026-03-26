@@ -3,6 +3,7 @@ import { Telegraf, type Context } from "telegraf";
 import type { AgentEntry } from "./agents.js";
 import { getAgent } from "./agents.js";
 import { createAcpClient, jobPerpClose, jobPerpModify, jobPerpOpen } from "./acp.js";
+import { fetchDgAccount, formatAccountBlock } from "./account.js";
 import { fetchDgPositions, formatPositionBlock } from "./positions.js";
 import { resolveWalletAddress } from "./wallet-resolve.js";
 
@@ -29,6 +30,11 @@ Açık pozlar (Degen Claw / HL):
 /positions <alias>   ör. /positions raichu
 /positions all       tüm agentlar
 (/poz aynı)
+
+HL hesap bakiyesi (USDC):
+/balance <alias>   ör. /balance raichu
+/balance all
+(/bakiye /account aynı)
 
 /ping — sağlık`;
 
@@ -175,6 +181,62 @@ export function registerBot(
     try {
       const rows = await fetchDgPositions(wallet);
       await replyChunked(ctx, formatPositionBlock(agent.alias, agent.label, rows));
+    } catch (e) {
+      await ctx.reply(`Hata: ${errText(e).slice(0, 3500)}`);
+    }
+  });
+
+  bot.command(["balance", "bakiye", "account"], async (ctx) => {
+    const parts = commandRest(ctx);
+    const sub = parts[0]?.trim();
+
+    if (!sub) {
+      await ctx.reply(
+        "Kullanım:\n• /balance raichu — tek agent HL bakiye\n• /balance all — hepsi\n(/bakiye /account aynı)"
+      );
+      return;
+    }
+
+    if (sub.toLowerCase() === "all") {
+      await ctx.reply("HL hesap bilgisi çekiliyor…");
+      const blocks: string[] = [];
+      for (const a of [...agents.values()].sort((x, y) => x.alias.localeCompare(y.alias))) {
+        const w = await resolveWalletAddress(a);
+        if (!w) {
+          blocks.push(
+            `${a.alias} — cüzdan alınamadı (walletAddress veya /acp/me)`
+          );
+          continue;
+        }
+        try {
+          const acc = await fetchDgAccount(w);
+          blocks.push(formatAccountBlock(a.alias, a.label, acc));
+        } catch (e) {
+          blocks.push(`${a.alias} — ${errText(e).slice(0, 280)}`);
+        }
+      }
+      await replyChunked(ctx, blocks.join("\n\n"));
+      return;
+    }
+
+    const agent = requireAgent(agents, sub);
+    if (!agent) {
+      await ctx.reply("Geçersiz alias. /agents");
+      return;
+    }
+
+    const wallet = await resolveWalletAddress(agent);
+    if (!wallet) {
+      await ctx.reply(
+        "Cüzdan bulunamadı. apiKey ile /acp/me veya AGENTS_JSON’da walletAddress."
+      );
+      return;
+    }
+
+    await ctx.reply("Çekiliyor…");
+    try {
+      const acc = await fetchDgAccount(wallet);
+      await replyChunked(ctx, formatAccountBlock(agent.alias, agent.label, acc));
     } catch (e) {
       await ctx.reply(`Hata: ${errText(e).slice(0, 3500)}`);
     }

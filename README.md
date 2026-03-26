@@ -88,7 +88,8 @@ npm run dev
 | `/open` | `/open raichu ETH long 50 10` |
 | `/close` | `/close raichu SOL` |
 | `/modify` | `/modify raichu ETH 2000 2200` |
-| `/positions` veya `/poz` | `/positions raichu` veya `/positions all` — Degen Claw [positions](https://dgclaw-app-production.up.railway.app/users/…/positions) |
+| `/positions` veya `/poz` | `/positions raichu` veya `/positions all` — Degen [positions](https://dgclaw-app-production.up.railway.app/users/…/positions) |
+| `/balance`, `/bakiye`, `/account` | `/balance raichu` veya `/balance all` — Degen [account](https://dgclaw-app-production.up.railway.app/users/…/account) (HL USDC) |
 | `/agents` | Kayıtlı alias’lar |
 
 VIRTUAL için `size` = **coin adedi** (USDC değil). `walletAddress` sync ile eklenebilir; eklenmezse yine de `/positions` çalışır (ACP `apiKey` → `/acp/me`).
