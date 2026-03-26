@@ -89,14 +89,14 @@ function resolveConfigPaths() {
  * @param {string} configPath
  * @param {Map<string, { alias: string; apiKey: string; label?: string }>} map
  */
-function ingestAgentsFromFile(configPath, map) {
+function ingestAgentsFromFile(configPath, map, quiet = false) {
   const cfg = loadJson(configPath);
   let n = 0;
   for (const a of cfg.agents ?? []) {
     if (!a?.apiKey) continue;
     const alias = aliasForName(a.name);
     if (map.has(alias)) {
-      console.warn(`[sync] Yinelenen alias atlandı (${alias}): ${configPath}`);
+      if (!quiet) console.warn(`[sync] Yinelenen alias atlandı (${alias}): ${configPath}`);
       continue;
     }
     map.set(alias, {
@@ -106,10 +106,11 @@ function ingestAgentsFromFile(configPath, map) {
     });
     n += 1;
   }
-  console.log(`[sync] ${configPath} → ${n} agent (apiKey’li)`);
+  if (!quiet) console.log(`[sync] ${configPath} → ${n} agent (apiKey’li)`);
 }
 
 function main() {
+  const oneLine = process.argv.includes("--one-line");
   const paths = resolveConfigPaths();
   if (!paths.length || !fs.existsSync(paths[0])) {
     console.error("Birincil ACP config bulunamadı:", paths[0] || defaultAcpConfig);
@@ -119,13 +120,13 @@ function main() {
   /** @type {Map<string, { alias: string; apiKey: string; label?: string }>} */
   const map = new Map();
 
-  console.log("[sync] Config dosyaları:");
+  if (!oneLine) console.log("[sync] Config dosyaları:");
   for (const p of paths) {
     if (!fs.existsSync(p)) {
-      console.warn("[sync] Atlandı (yok):", p);
+      if (!oneLine) console.warn("[sync] Atlandı (yok):", p);
       continue;
     }
-    ingestAgentsFromFile(p, map);
+    ingestAgentsFromFile(p, map, oneLine);
   }
 
   const manualPath = path.join(root, "agents.manual.json");
@@ -146,7 +147,7 @@ function main() {
         label: m.label?.trim() || alias,
       });
     }
-    console.log("[sync] agents.manual.json birleştirildi");
+    if (!oneLine) console.log("[sync] agents.manual.json birleştirildi");
   }
 
   const out = [...map.values()].sort((a, b) => a.alias.localeCompare(b.alias));
@@ -159,12 +160,14 @@ function main() {
 
   const outPath = path.join(root, "agents.local.json");
   fs.writeFileSync(outPath, `${JSON.stringify(out, null, 2)}\n`, "utf8");
+
+  if (oneLine) {
+    process.stdout.write(`${JSON.stringify(out)}\n`);
+    process.exit(0);
+  }
+
   console.log("Yazıldı:", outPath, "—", out.length, "agent");
   for (const x of out) console.log(" ", x.alias, "→", x.label);
-
-  if (process.argv.includes("--one-line")) {
-    process.stdout.write(`${JSON.stringify(out)}\n`);
-  }
 }
 
 main();

@@ -6,7 +6,9 @@ import { createAcpClient, jobPerpClose, jobPerpModify, jobPerpOpen } from "./acp
 
 const HELP = `Degen Claw — komutlar (/agents ile alias doğrula)
 
-Aç — USDC notional (ETH/BTC/SOL…). VIRTUAL için size = coin adedi.
+Aç — size pariteye göre:
+• ETH/BTC/SOL vb.: genelde USDC notional
+• VIRTUAL: coin adedi (USDC değil)
 /open <alias> <PAIR> <long|short> <size> [kaldıraç]
 Örnek: /open raichu ETH long 50 10
 VIRTUAL: /open raichu VIRTUAL long 49 5

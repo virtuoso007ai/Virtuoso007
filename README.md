@@ -25,7 +25,7 @@ Super Saiyan Raichu bu repoda (`super-saiyan-raichu/virtuals-protocol-acp/config
 Başka sürücü veya farklı yol için: `ACP_CONFIG_PATHS` ortam değişkenine virgülle tam dosya yolları ver (bu durumda yalnızca birincil `ACP_CONFIG_PATH` + bu liste kullanılır; kardeş klasör taraması devre dışı kalır).
 
 - **Lokal senkron:** `npm run sync:agents` → yukarıdaki dosyalar + varsa `agents.manual.json` → `agents.local.json`.
-- **Railway tek satır env:** `npm run sync:agents:railway` çıktısını `AGENTS_JSON` olarak yapıştır (manuel anahtarlar `agents.manual.json` doldurulduktan sonra).
+- **Railway `AGENTS_JSON`:** `npm run railway:paste` → `AGENTS_JSON.paste.txt` oluşur; içeriğinin tamamını Railway’de value alanına yapıştır (dosya git’e girmez).
 
 Varsayılan orkestra alias eşlemesi (isimden otomatik):
 
