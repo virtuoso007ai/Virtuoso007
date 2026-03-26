@@ -1,0 +1,22 @@
+[
+  {
+    "alias": "taxerclaw",
+    "apiKey": "PASTE_ACP_KEY",
+    "label": "Wolf Agent (Taxerclaw)"
+  },
+  {
+    "alias": "pokedex",
+    "apiKey": "PASTE_ACP_KEY",
+    "label": "Pokedex"
+  },
+  {
+    "alias": "welles",
+    "apiKey": "PASTE_ACP_KEY",
+    "label": "Welles Wilder"
+  },
+  {
+    "alias": "ichimoku",
+    "apiKey": "PASTE_ACP_KEY",
+    "label": "Ichimoku Kinko Hyo"
+  }
+]

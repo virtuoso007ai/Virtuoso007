@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+.env.local
+agents.local.json
+agents.manual.json
+*.log
