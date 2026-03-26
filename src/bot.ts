@@ -3,6 +3,7 @@ import { Telegraf, type Context } from "telegraf";
 import type { AgentEntry } from "./agents.js";
 import { getAgent } from "./agents.js";
 import { createAcpClient, jobPerpClose, jobPerpModify, jobPerpOpen } from "./acp.js";
+import { fetchDgPositions, formatPositionBlock } from "./positions.js";
 
 const HELP = `Degen Claw — komutlar (/agents ile alias doğrula)
 
@@ -15,7 +16,18 @@ VIRTUAL: /open raichu VIRTUAL long 49 5
 
 Kapat: /close <alias> <PAIR>
 
-TP/SL: /modify <alias> <PAIR> <stopLoss> <takeProfit>
+TP/SL (ikisi birden):
+/modify <alias> <PAIR> <SL> <TP>
+Örnek: /modify raichu ETH 2000 2200
+
+Sadece SL (TP yok): /modify <alias> <PAIR> <SL> -
+Sadece TP (SL yok): /modify <alias> <PAIR> - <TP>
+(- = bu tarafı gönderme; Degen reddederse mevcut TP/SL’yi yazıp ikisini birden güncelle)
+
+Açık pozlar (Degen Claw / HL):
+/positions <alias>   ör. /positions raichu
+/positions all       tüm agentlar
+(/poz aynı)
 
 /ping — sağlık`;
 
@@ -65,6 +77,18 @@ function requireAgent(
   return getAgent(agents, alias) ?? null;
 }
 
+const TG_MAX = 3900;
+
+async function replyChunked(ctx: Context, text: string): Promise<void> {
+  if (text.length <= TG_MAX) {
+    await ctx.reply(text);
+    return;
+  }
+  for (let i = 0; i < text.length; i += TG_MAX) {
+    await ctx.reply(text.slice(i, i + TG_MAX));
+  }
+}
+
 export function registerBot(
   bot: Telegraf,
   agents: Map<string, AgentEntry>
@@ -97,6 +121,57 @@ export function registerBot(
       (a) => `• ${a.alias}${a.label ? ` — ${a.label}` : ""}`
     );
     await ctx.reply(`Kayıtlı agentlar:\n${lines.join("\n")}`);
+  });
+
+  bot.command(["positions", "poz"], async (ctx) => {
+    const parts = commandRest(ctx);
+    const sub = parts[0]?.trim();
+
+    if (!sub) {
+      await ctx.reply(
+        "Kullanım:\n• /positions raichu — tek agent\n• /positions all — hepsi\n(/poz aynı)"
+      );
+      return;
+    }
+
+    if (sub.toLowerCase() === "all") {
+      await ctx.reply("Pozisyonlar çekiliyor…");
+      const blocks: string[] = [];
+      for (const a of [...agents.values()].sort((x, y) => x.alias.localeCompare(y.alias))) {
+        if (!a.walletAddress?.trim()) {
+          blocks.push(`${a.alias} — cüzdan yok (walletAddress)`);
+          continue;
+        }
+        try {
+          const rows = await fetchDgPositions(a.walletAddress);
+          blocks.push(formatPositionBlock(a.alias, a.label, rows));
+        } catch (e) {
+          blocks.push(`${a.alias} — ${errText(e).slice(0, 280)}`);
+        }
+      }
+      await replyChunked(ctx, blocks.join("\n\n"));
+      return;
+    }
+
+    const agent = requireAgent(agents, sub);
+    if (!agent) {
+      await ctx.reply("Geçersiz alias. /agents");
+      return;
+    }
+    if (!agent.walletAddress?.trim()) {
+      await ctx.reply(
+        "Bu agent için walletAddress yok. `npm run sync:agents` (config’te cüzdan) veya AGENTS_JSON’a ekle."
+      );
+      return;
+    }
+
+    await ctx.reply("Çekiliyor…");
+    try {
+      const rows = await fetchDgPositions(agent.walletAddress);
+      await replyChunked(ctx, formatPositionBlock(agent.alias, agent.label, rows));
+    } catch (e) {
+      await ctx.reply(`Hata: ${errText(e).slice(0, 3500)}`);
+    }
   });
 
   bot.command("open", async (ctx) => {
@@ -166,26 +241,38 @@ export function registerBot(
 
   bot.command("modify", async (ctx) => {
     const parts = commandRest(ctx);
-    const [alias, pairRaw, sl, tp] = parts;
+    const [alias, pairRaw, slRaw, tpRaw] = parts;
     const pair = pairRaw?.toUpperCase();
+
+    const skipToken = (s: string | undefined): boolean =>
+      s == null || /^[-_]$|^(skip|yok|none)$/i.test(String(s).trim());
 
     const agent = requireAgent(agents, alias);
     if (!agent) {
       await ctx.reply("Geçersiz alias.");
       return;
     }
-    if (!pair || !sl || !tp) {
+
+    const stopLoss = skipToken(slRaw) ? undefined : slRaw;
+    const takeProfit = skipToken(tpRaw) ? undefined : tpRaw;
+
+    if (!pair || (!stopLoss && !takeProfit)) {
       await ctx.reply(
-        "Kullanım: /modify <alias> <PAIR> <stopLoss> <takeProfit>\nÖrnek: /modify raichu ETH 2000 2200"
+        "Kullanım:\n" +
+          "• İkisi: /modify raichu ETH 2000 2200\n" +
+          "• Sadece SL: /modify raichu ETH 2000 -\n" +
+          "• Sadece TP: /modify raichu ETH - 2200"
       );
       return;
     }
 
-    await ctx.reply(`perp_modify: ${agent.alias} ${pair} SL=${sl} TP=${tp}…`);
+    const slLabel = stopLoss ?? "(yok)";
+    const tpLabel = takeProfit ?? "(yok)";
+    await ctx.reply(`perp_modify: ${agent.alias} ${pair} SL=${slLabel} TP=${tpLabel}…`);
 
     try {
       const client = createAcpClient(agent.apiKey);
-      const data = await jobPerpModify(client, { pair, stopLoss: sl, takeProfit: tp });
+      const data = await jobPerpModify(client, { pair, stopLoss, takeProfit });
       await ctx.reply(JSON.stringify(data, null, 2));
     } catch (e) {
       await ctx.reply(`Hata: ${errText(e).slice(0, 3500)}`);

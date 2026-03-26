@@ -8,6 +8,8 @@ export type AgentEntry = {
   apiKey: string;
   /** Opsiyonel görünen isim */
   label?: string;
+  /** Degen Claw (HL) cüzdanı — /positions için */
+  walletAddress?: string;
 };
 
 function normalizeAlias(s: string): string {
@@ -31,10 +33,12 @@ function parseAgentsJson(raw: string): Map<string, AgentEntry> {
     const apiKey = String((row as { apiKey?: string }).apiKey ?? "").trim();
     if (!alias || !apiKey) continue;
     if (map.has(alias)) throw new Error(`Yinelenen alias: ${alias}`);
+    const walletRaw = (row as { walletAddress?: string }).walletAddress?.trim();
     map.set(alias, {
       alias,
       apiKey,
       label: (row as { label?: string }).label?.trim(),
+      walletAddress: walletRaw || undefined,
     });
   }
   if (map.size === 0) throw new Error("Geçerli agent yok");

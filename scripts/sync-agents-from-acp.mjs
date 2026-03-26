@@ -99,10 +99,12 @@ function ingestAgentsFromFile(configPath, map, quiet = false) {
       if (!quiet) console.warn(`[sync] Yinelenen alias atlandı (${alias}): ${configPath}`);
       continue;
     }
+    const w = a.walletAddress != null ? String(a.walletAddress).trim() : "";
     map.set(alias, {
       alias,
       apiKey: String(a.apiKey).trim(),
       label: a.name || alias,
+      ...(w ? { walletAddress: w } : {}),
     });
     n += 1;
   }
@@ -141,10 +143,14 @@ function main() {
       const alias = String(m.alias).trim().toLowerCase().replace(/^@/, "");
       const key = String(m.apiKey).trim();
       if (!alias || !key || key.includes("PASTE_")) continue;
+      const prev = map.get(alias);
+      const mw = m.walletAddress != null ? String(m.walletAddress).trim() : "";
+      const w = mw || (prev && prev.walletAddress) || "";
       map.set(alias, {
         alias,
         apiKey: key,
-        label: m.label?.trim() || alias,
+        label: m.label?.trim() || (prev && prev.label) || alias,
+        ...(w ? { walletAddress: w } : {}),
       });
     }
     if (!oneLine) console.log("[sync] agents.manual.json birleştirildi");
