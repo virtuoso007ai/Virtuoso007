@@ -57,19 +57,22 @@ export async function jobPerpClose(client: AxiosInstance, pair: string) {
 
 export type PerpModifyParams = {
   pair: string;
-  stopLoss: string;
-  takeProfit: string;
+  /** Boşsa gönderilmez (Degen bazen tek alan kabul etmeyebilir). */
+  stopLoss?: string;
+  takeProfit?: string;
 };
 
 export async function jobPerpModify(client: AxiosInstance, p: PerpModifyParams) {
+  const req: Record<string, string> = {
+    pair: p.pair.toUpperCase(),
+  };
+  if (p.stopLoss != null && p.stopLoss !== "") req.stopLoss = p.stopLoss;
+  if (p.takeProfit != null && p.takeProfit !== "") req.takeProfit = p.takeProfit;
+
   const body = {
     providerWalletAddress: DEGEN_CLAW_PROVIDER,
     jobOfferingName: "perp_modify",
-    serviceRequirements: {
-      pair: p.pair.toUpperCase(),
-      stopLoss: p.stopLoss,
-      takeProfit: p.takeProfit,
-    },
+    serviceRequirements: req,
   };
   const { data } = await client.post<{ data?: { jobId?: number }; message?: string }>(
     "/acp/jobs",
