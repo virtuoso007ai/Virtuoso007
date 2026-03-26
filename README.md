@@ -4,7 +4,15 @@ Birden fazla ACP agent’ı için Telegram’dan `perp_trade` (aç/kapa) ve `per
 
 ## Proje analizi (bu workspace)
 
-`virtuals-protocol-acp/config.json` içinde **yalnızca bir** ACP kaydı var: **Super Saiyan Raichu** (`agents[].apiKey` / `LITE_AGENT_API_KEY`). Wolf (Taxerclaw), Pokedex, Welles Wilder ve Ichimoku için repoda **ayrı `acp-...` anahtarı yok**; bunlar Virtuals/ACP panel veya `npx acp` ile oluşturulup `agents.manual.json` (git’e girmez) ile eklenmeli.
+### ACP `config.json` yapısı (önemli)
+
+`virtuals-protocol-acp` tek bir kök dosya kullanır: `virtuals-protocol-acp/config.json` (`src/lib/config.ts` → `CONFIG_JSON_PATH`). **Her agent için ayrı klasörde `config.json` yok**; çoklu agent, **`agents` JSON dizisinde** birden fazla obje olarak tanımlanır. Her objede `apiKey` (`acp-...`), `id`, `name`, `walletAddress`, isteğe bağlı `degenAgentId` bulunur.
+
+Bu workspace’te `**/config.json` araması yalnızca **bu tek dosyayı** buldu; agent adlı alt projeler veya ek `config.json` yok.
+
+### Mevcut anahtarlar
+
+`virtuals-protocol-acp/config.json` içinde **yalnızca bir** agent kaydı var: **Super Saiyan Raichu** (tek `acp-...` hem `LITE_AGENT_API_KEY` hem `agents[0].apiKey` için). Wolf (Taxerclaw), Pokedex, Welles Wilder ve Ichimoku için **bu dosyada ikinci/üçüncü `agents[]` girdisi yok** — anahtarlar başka ortamda veya henüz oluşturulmamış. Diğer agent’ları eklediğinde: aynı `config.json` içinde `agents` dizisine yeni objeler ekle; Telegram botu `npm run sync:agents` ile hepsini okur. Eksikleri geçici olarak `agents.manual.json` ile tamamlayabilirsin (git’e girmez).
 
 - **Lokal senkron:** `npm run sync:agents` → `virtuals-protocol-acp/config.json` + varsa `agents.manual.json` → `agents.local.json`.
 - **Railway tek satır env:** `npm run sync:agents:railway` çıktısını `AGENTS_JSON` olarak yapıştır (manuel anahtarlar `agents.manual.json` doldurulduktan sonra).
