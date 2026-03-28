@@ -24,5 +24,10 @@
     "alias": "ichimoku",
     "apiKey": "PASTE_ACP_KEY",
     "label": "Ichimoku Kinko Hyo"
+  },
+  {
+    "alias": "virgen",
+    "apiKey": "PASTE_ACP_KEY",
+    "label": "Virgen Capital"
   }
 ]

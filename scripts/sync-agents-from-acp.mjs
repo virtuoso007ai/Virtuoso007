@@ -22,6 +22,7 @@ const NAME_TO_ALIAS = [
   [/pokedex/i, "pokedex"],
   [/welles\s*wilder/i, "welles"],
   [/ichimoku/i, "ichimoku"],
+  [/virgen\s*capital/i, "virgen"],
 ];
 
 function aliasForName(name) {
@@ -76,6 +77,7 @@ function resolveConfigPaths() {
   const optional = [
     path.join(base, "ichimoku-kinko-hyo", "virtuals-protocol-acp", "config.json"),
     path.join(base, "pokedex", "virtuals-protocol-acp", "config.json"),
+    path.join(base, "virgen-capital", "virtuals-protocol-acp", "config.json"),
     path.join(base, "welles-wilder", "virtuals-protocol-acp", "config.json"),
     path.join(base, "wolfy-agent", "virtuals-agent", "config.json"),
   ];

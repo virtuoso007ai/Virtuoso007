@@ -19,6 +19,7 @@ Super Saiyan Raichu bu repoda (`super-saiyan-raichu/virtuals-protocol-acp/config
 | `super-saiyan-raichu` | `virtuals-protocol-acp/config.json` (birincil) |
 | `ichimoku-kinko-hyo` | `virtuals-protocol-acp/config.json` |
 | `pokedex` | `virtuals-protocol-acp/config.json` |
+| `virgen-capital` | `virtuals-protocol-acp/config.json` |
 | `welles-wilder` | `virtuals-protocol-acp/config.json` |
 | `wolfy-agent` | `virtuals-agent/config.json` (TaXerClaw → alias `taxerclaw`) |
 
@@ -36,6 +37,7 @@ Varsayılan orkestra alias eşlemesi (isimden otomatik):
 | `pokedex` | Pokedex |
 | `welles` | Welles Wilder |
 | `ichimoku` | Ichimoku Kinko Hyo |
+| `virgen` | Virgen Capital |
 
 Her agent için Virtuals/ACP’den ayrı **LITE agent API key** (`acp-...`) gerekir; `agents.example.json` şablonunu kopyalayıp anahtarları doldur.
 
