@@ -3,7 +3,7 @@ import { Telegraf, type Context } from "telegraf";
 import type { AgentEntry } from "./agents.js";
 import { getAgent } from "./agents.js";
 import { createAcpClient, jobPerpClose, jobPerpModify, jobPerpOpen } from "./acp.js";
-import { fetchDgAccount, formatAccountBlock } from "./account.js";
+import { degenAccountErrorHint, fetchDgAccount, formatAccountBlock } from "./account.js";
 import { fetchDgPositions, formatPositionBlock } from "./positions.js";
 import { resolveWalletAddress } from "./wallet-resolve.js";
 import {
@@ -219,8 +219,9 @@ export function registerBot(
           const rows = await fetchDgPositions(w);
           blocks.push(formatPositionBlock(a.alias, a.label, rows));
         } catch (e) {
+          const hint = degenAccountErrorHint(e);
           blocks.push(
-            `<b>${escHtml(a.alias)}</b>\n<i>${escHtml(errText(e).slice(0, 400))}</i>`
+            `<b>${escHtml(a.alias)}</b>\n<i>${escHtml(hint ?? errText(e).slice(0, 400))}</i>`
           );
         }
       }
@@ -248,6 +249,11 @@ export function registerBot(
       const rows = await fetchDgPositions(wallet);
       await replyChunkedHtml(ctx, formatPositionBlock(agent.alias, agent.label, rows));
     } catch (e) {
+      const hint = degenAccountErrorHint(e);
+      if (hint) {
+        await ctx.reply(hint);
+        return;
+      }
       await ctx.reply(
         `<b>Hata</b>\n<pre>${escHtml(errText(e).slice(0, 3500))}</pre>`,
         { parse_mode: "HTML" }
@@ -281,7 +287,8 @@ export function registerBot(
           const acc = await fetchDgAccount(w);
           blocks.push(formatAccountBlock(a.alias, a.label, acc));
         } catch (e) {
-          blocks.push(`${a.alias} — ${errText(e).slice(0, 280)}`);
+          const hint = degenAccountErrorHint(e);
+          blocks.push(`${a.alias} — ${hint ?? errText(e).slice(0, 280)}`);
         }
       }
       await replyChunked(ctx, blocks.join("\n\n"));
@@ -307,7 +314,8 @@ export function registerBot(
       const acc = await fetchDgAccount(wallet);
       await replyChunked(ctx, formatAccountBlock(agent.alias, agent.label, acc));
     } catch (e) {
-      await ctx.reply(`Hata: ${errText(e).slice(0, 3500)}`);
+      const hint = degenAccountErrorHint(e);
+      await ctx.reply(hint ?? `Hata: ${errText(e).slice(0, 3500)}`);
     }
   });
 

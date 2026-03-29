@@ -25,6 +25,21 @@ export async function fetchDgAccount(walletAddress: string): Promise<DgAccountDa
   return data?.data ?? null;
 }
 
+/** Degen 404 / "Account not found" → kullanıcıya kısa açıklama */
+export function degenAccountErrorHint(e: unknown): string | undefined {
+  if (!axios.isAxiosError(e)) return undefined;
+  const st = e.response?.status;
+  const raw = e.response?.data;
+  const txt = typeof raw === "string" ? raw : JSON.stringify(raw ?? "");
+  if (st === 404 || /account not found/i.test(txt)) {
+    return (
+      "Degen Claw’da bu cüzdan için hesap yok (HL deposit / kayıt tamamlanmamış olabilir). " +
+      "Virtuals agent cüzdanı ile eşleştiğinden emin ol; /balance tekrar dene."
+    );
+  }
+  return undefined;
+}
+
 export function formatAccountBlock(
   alias: string,
   label: string | undefined,

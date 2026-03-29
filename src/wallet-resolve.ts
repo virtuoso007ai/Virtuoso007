@@ -5,13 +5,10 @@ import { createAcpClient } from "./acp.js";
 const cacheByApiKey = new Map<string, string>();
 
 /**
- * Önce `agent.walletAddress`, yoksa `GET /acp/me` (aynı ACP API anahtarı).
- * Railway’de AGENTS_JSON’a cüzdan yazmak zorunlu değil.
+ * Degen / leaderboard / pozisyon için cüzdan: önce `GET /acp/me` (Virtuals kaynaklı),
+ * yoksa `agent.walletAddress`. Böylece AGENTS_JSON’daki eski adres Degen’i bozmaz.
  */
 export async function resolveWalletAddress(agent: AgentEntry): Promise<string | undefined> {
-  const manual = agent.walletAddress?.trim();
-  if (manual) return manual;
-
   const hit = cacheByApiKey.get(agent.apiKey);
   if (hit) return hit;
 
@@ -19,9 +16,13 @@ export async function resolveWalletAddress(agent: AgentEntry): Promise<string | 
     const client = createAcpClient(agent.apiKey);
     const { data } = await client.get<{ data?: { walletAddress?: string } }>("/acp/me");
     const w = data?.data?.walletAddress?.trim();
-    if (w) cacheByApiKey.set(agent.apiKey, w);
-    return w;
+    if (w) {
+      cacheByApiKey.set(agent.apiKey, w);
+      return w;
+    }
   } catch {
-    return undefined;
+    // ACP yanıt vermezse statik adrese düş
   }
+
+  return agent.walletAddress?.trim();
 }
