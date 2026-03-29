@@ -34,5 +34,11 @@
     "alias": "degenswap",
     "apiKey": "PASTE_ACP_KEY",
     "label": "DegenSwap"
+  },
+  {
+    "alias": "squirtle",
+    "apiKey": "PASTE_ACP_KEY",
+    "label": "Squirtle Squad",
+    "walletAddress": "0x0000000000000000000000000000000000000000"
   }
 ]

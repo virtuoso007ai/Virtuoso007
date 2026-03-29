@@ -24,6 +24,8 @@ const NAME_TO_ALIAS = [
   [/ichimoku/i, "ichimoku"],
   [/virgen\s*capital/i, "virgen"],
   [/degenswap/i, "degenswap"],
+  /** D:\degenswap — SquirtleSquad (Degen Claw kayıtlı) */
+  [/squirtlesquad/i, "squirtle"],
 ];
 
 function aliasForName(name) {
