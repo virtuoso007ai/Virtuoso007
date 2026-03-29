@@ -40,7 +40,7 @@ Açık pozlar (Degen Claw / HL):
 /positions <alias>   ör. /positions raichu
 /positions all       tüm agentlar
 (/poz aynı)
-Görünüm: kompakt tek satır/pozisyon (entry→mark, N=notional, u=uPnL); 🟢 · 🔴 · ⚪
+Görünüm: tek satır/pozisyon — · ile; entry, mark, kaldıraç, N, uPnL; 🟢 · 🔴 · ⚪
 
 HL hesap bakiyesi (USDC):
 /balance <alias>   ör. /balance raichu
