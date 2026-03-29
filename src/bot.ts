@@ -206,7 +206,8 @@ export function registerBot(
     if (sub.toLowerCase() === "all") {
       await ctx.reply("Pozisyonlar çekiliyor…");
       const blocks: string[] = [];
-      const sepBetweenAgents = "\n\n────────\n\n";
+      /** Tek \n — çift newline Telegram’da paragraflaşır, fazla boşluk verir */
+      const sepBetweenAgents = "\n────────\n";
       for (const a of [...agents.values()].sort((x, y) => x.alias.localeCompare(y.alias))) {
         const w = await resolveWalletAddress(a);
         if (!w) {
