@@ -79,6 +79,7 @@ function resolveConfigPaths() {
   const base = siblingRootDir();
   const optional = [
     path.join(base, "degenswap", "config.json"),
+    path.join(base, "friday", "virtuals-protocol-acp", "config.json"),
     path.join(base, "ichimoku-kinko-hyo", "virtuals-protocol-acp", "config.json"),
     path.join(base, "pokedex", "virtuals-protocol-acp", "config.json"),
     path.join(base, "virgen-capital", "virtuals-protocol-acp", "config.json"),

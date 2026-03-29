@@ -43,10 +43,8 @@ function pnlRowIcon(unrealizedPnl: string | undefined): string {
   return "⚪";
 }
 
-const SECTION_RULE = "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈";
-
 /**
- * Telegram HTML — göz yormaması için başlık kalın, rakamlar monospace, satırlar sade.
+ * Telegram HTML — kompakt: her pozisyon tek satır (entry→mark, N=notional, u=uPnL).
  */
 export function formatPositionBlock(alias: string, label: string | undefined, rows: DgPositionRow[]): string {
   const title = label
@@ -54,10 +52,10 @@ export function formatPositionBlock(alias: string, label: string | undefined, ro
     : `<b>${esc(alias)}</b>`;
 
   if (rows.length === 0) {
-    return `${title}\n\n${SECTION_RULE}\n<i>Açık pozisyon yok</i>`;
+    return `${title}\n<i>Açık pozisyon yok</i>`;
   }
 
-  const blocks = rows.map((r) => {
+  const lines = rows.map((r) => {
     const pair = esc(r.pair ?? "?");
     const side = esc(String(r.side ?? "?"));
     const entry = esc(String(r.entryPrice ?? "-"));
@@ -66,13 +64,8 @@ export function formatPositionBlock(alias: string, label: string | undefined, ro
     const notional = esc(String(r.notionalSize ?? "-"));
     const pnl = esc(String(r.unrealizedPnl != null ? r.unrealizedPnl : "-"));
     const icon = pnlRowIcon(r.unrealizedPnl);
-
-    return [
-      `${icon} <b>${pair}</b> · <i>${side}</i>`,
-      `   entry <code>${entry}</code> · mark <code>${mark}</code> · <code>${lev}</code>`,
-      `   notional <code>${notional}</code> · uPnL <code>${pnl}</code>`,
-    ].join("\n");
+    return `${icon} <b>${pair}</b> <i>${side}</i> · <code>${entry}</code>→<code>${mark}</code> <code>${lev}</code> · N<code>${notional}</code> u<code>${pnl}</code>`;
   });
 
-  return `${title}\n\n${SECTION_RULE}\n\n${blocks.join("\n\n")}`;
+  return `${title}\n${lines.join("\n")}`;
 }

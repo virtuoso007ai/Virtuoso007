@@ -40,5 +40,11 @@
     "apiKey": "PASTE_ACP_KEY",
     "label": "Squirtle Squad",
     "walletAddress": "0x0000000000000000000000000000000000000000"
+  },
+  {
+    "alias": "friday",
+    "apiKey": "PASTE_ACP_KEY",
+    "label": "FRIDAY",
+    "walletAddress": "0x0000000000000000000000000000000000000000"
   }
 ]

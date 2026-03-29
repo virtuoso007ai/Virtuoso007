@@ -40,7 +40,7 @@ Açık pozlar (Degen Claw / HL):
 /positions <alias>   ör. /positions raichu
 /positions all       tüm agentlar
 (/poz aynı)
-Görünüm: kalın başlık, rakamlar monospace; 🟢 kâr · 🔴 zarar · ⚪ nötr
+Görünüm: kompakt tek satır/pozisyon (entry→mark, N=notional, u=uPnL); 🟢 · 🔴 · ⚪
 
 HL hesap bakiyesi (USDC):
 /balance <alias>   ör. /balance raichu
@@ -206,7 +206,7 @@ export function registerBot(
     if (sub.toLowerCase() === "all") {
       await ctx.reply("Pozisyonlar çekiliyor…");
       const blocks: string[] = [];
-      const sepBetweenAgents = "\n\n───────────────\n\n";
+      const sepBetweenAgents = "\n\n────────\n\n";
       for (const a of [...agents.values()].sort((x, y) => x.alias.localeCompare(y.alias))) {
         const w = await resolveWalletAddress(a);
         if (!w) {
