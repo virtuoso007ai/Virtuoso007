@@ -116,46 +116,36 @@ function escHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-/** HTML mesajları parça parça; mümkünse \\n\\n sınırında böler. */
+/**
+ * HTML mesajları parça parça. Pozisyon/leaderboard çoğunlukla &lt;br&gt; kullanır;
+ * eski mantık \\n\\n ile böldüğü için tek parça kalıp 4096 limitini aşıyordu → Telegram reddediyordu.
+ */
 async function replyChunkedHtml(ctx: Context, html: string): Promise<void> {
   const max = 3500;
-  if (html.length <= max) {
-    await ctx.reply(html, { parse_mode: "HTML" });
+  const unified = html.replace(/\r\n/g, "\n").replace(/\n/g, "<br>");
+  if (unified.length <= max) {
+    await ctx.reply(unified, { parse_mode: "HTML" });
     return;
   }
-  const paras = html.split(/\n\n+/);
-  let buf = "";
-  for (const p of paras) {
-    const next = buf ? `${buf}\n\n${p}` : p;
+  const parts = unified.split(/<br\s*\/?>/gi);
+  let cur = "";
+  for (const p of parts) {
+    const next = cur === "" ? p : `${cur}<br>${p}`;
     if (next.length <= max) {
-      buf = next;
+      cur = next;
       continue;
     }
-    if (buf) {
-      await ctx.reply(buf, { parse_mode: "HTML" });
-      buf = "";
+    if (cur !== "") {
+      await ctx.reply(cur, { parse_mode: "HTML" });
     }
-    if (p.length <= max) {
-      buf = p;
-      continue;
+    let rest = p;
+    while (rest.length > max) {
+      await ctx.reply(rest.slice(0, max), { parse_mode: "HTML" });
+      rest = rest.slice(max);
     }
-    const lines = p.split("\n");
-    let lb = "";
-    for (const line of lines) {
-      const cand = lb ? `${lb}\n${line}` : line;
-      if (cand.length <= max) lb = cand;
-      else {
-        if (lb) await ctx.reply(lb, { parse_mode: "HTML" });
-        lb = line;
-        while (lb.length > max) {
-          await ctx.reply(lb.slice(0, max), { parse_mode: "HTML" });
-          lb = lb.slice(max);
-        }
-      }
-    }
-    buf = lb;
+    cur = rest;
   }
-  if (buf) await ctx.reply(buf, { parse_mode: "HTML" });
+  if (cur !== "") await ctx.reply(cur, { parse_mode: "HTML" });
 }
 
 export function registerBot(
@@ -206,13 +196,13 @@ export function registerBot(
     if (sub.toLowerCase() === "all") {
       await ctx.reply("Pozisyonlar çekiliyor…");
       const blocks: string[] = [];
-      /** Tek \n — çift newline Telegram’da paragraflaşır, fazla boşluk verir */
-      const sepBetweenAgents = "\n────────\n";
+      /** Sadece çizgi; ekstra boş satır yok (HTML’de tamamen &lt;br&gt;) */
+      const sepBetweenAgents = "<br>────────<br>";
       for (const a of [...agents.values()].sort((x, y) => x.alias.localeCompare(y.alias))) {
         const w = await resolveWalletAddress(a);
         if (!w) {
           blocks.push(
-            `<b>${escHtml(a.alias)}</b>\n<i>Cüzdan alınamadı</i> — <code>walletAddress</code> veya <code>/acp/me</code>`
+            `<b>${escHtml(a.alias)}</b><br><i>Cüzdan alınamadı</i> — <code>walletAddress</code> veya <code>/acp/me</code>`
           );
           continue;
         }
@@ -222,11 +212,16 @@ export function registerBot(
         } catch (e) {
           const hint = degenAccountErrorHint(e);
           blocks.push(
-            `<b>${escHtml(a.alias)}</b>\n<i>${escHtml(hint ?? errText(e).slice(0, 400))}</i>`
+            `<b>${escHtml(a.alias)}</b><br><i>${escHtml(hint ?? errText(e).slice(0, 400))}</i>`
           );
         }
       }
-      await replyChunkedHtml(ctx, blocks.join(sepBetweenAgents));
+      try {
+        await replyChunkedHtml(ctx, blocks.join(sepBetweenAgents));
+      } catch (e) {
+        console.error("[positions all]", e);
+        await ctx.reply(`Gönderim hatası: ${errText(e).slice(0, 800)}`);
+      }
       return;
     }
 
