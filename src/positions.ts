@@ -29,7 +29,11 @@ export async function fetchDgPositions(walletAddress: string): Promise<DgPositio
   return Array.isArray(data?.data) ? data.data : [];
 }
 
-/** uPnL sayısına göre satır başı işaret (Telegram’da güvenilir; HTML renk sınırlı). */
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** uPnL sayısına göre satır başı işaret */
 function pnlRowIcon(unrealizedPnl: string | undefined): string {
   if (unrealizedPnl == null || String(unrealizedPnl).trim() === "") return "⚪";
   const n = Number.parseFloat(String(unrealizedPnl).replace(/,/g, ""));
@@ -39,20 +43,36 @@ function pnlRowIcon(unrealizedPnl: string | undefined): string {
   return "⚪";
 }
 
-export function formatPositionBlock(alias: string, label: string | undefined, rows: DgPositionRow[]): string {
-  const head = label ? `${alias} — ${label}` : alias;
-  if (rows.length === 0) return `${head}\n  (açık pozisyon yok)`;
+const SECTION_RULE = "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈";
 
-  const lines = rows.map((r) => {
-    const pair = r.pair ?? "?";
-    const side = r.side ?? "?";
-    const entry = r.entryPrice ?? "-";
-    const mark = r.markPrice ?? "-";
-    const lev = r.leverage != null ? `${r.leverage}x` : "?x";
-    const notional = r.notionalSize ?? "-";
-    const pnl = r.unrealizedPnl != null ? r.unrealizedPnl : "-";
+/**
+ * Telegram HTML — göz yormaması için başlık kalın, rakamlar monospace, satırlar sade.
+ */
+export function formatPositionBlock(alias: string, label: string | undefined, rows: DgPositionRow[]): string {
+  const title = label
+    ? `<b>${esc(alias)}</b> — <i>${esc(label)}</i>`
+    : `<b>${esc(alias)}</b>`;
+
+  if (rows.length === 0) {
+    return `${title}\n\n${SECTION_RULE}\n<i>Açık pozisyon yok</i>`;
+  }
+
+  const blocks = rows.map((r) => {
+    const pair = esc(r.pair ?? "?");
+    const side = esc(String(r.side ?? "?"));
+    const entry = esc(String(r.entryPrice ?? "-"));
+    const mark = esc(String(r.markPrice ?? "-"));
+    const lev = r.leverage != null ? esc(`${r.leverage}x`) : "?x";
+    const notional = esc(String(r.notionalSize ?? "-"));
+    const pnl = esc(String(r.unrealizedPnl != null ? r.unrealizedPnl : "-"));
     const icon = pnlRowIcon(r.unrealizedPnl);
-    return `  ${icon} ${pair} ${side} | entry ${entry} | mark ${mark} | ${lev} | notional ${notional} | uPnL ${pnl}`;
+
+    return [
+      `${icon} <b>${pair}</b> · <i>${side}</i>`,
+      `   entry <code>${entry}</code> · mark <code>${mark}</code> · <code>${lev}</code>`,
+      `   notional <code>${notional}</code> · uPnL <code>${pnl}</code>`,
+    ].join("\n");
   });
-  return `${head}\n${lines.join("\n")}`;
+
+  return `${title}\n\n${SECTION_RULE}\n\n${blocks.join("\n\n")}`;
 }

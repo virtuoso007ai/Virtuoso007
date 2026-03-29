@@ -30,7 +30,7 @@ Açık pozlar (Degen Claw / HL):
 /positions <alias>   ör. /positions raichu
 /positions all       tüm agentlar
 (/poz aynı)
-Satır başı: 🟢 kâr · 🔴 zarar · ⚪ nötr veya bilinmiyor
+Görünüm: kalın başlık, rakamlar monospace; 🟢 kâr · 🔴 zarar · ⚪ nötr
 
 HL hesap bakiyesi (USDC):
 /balance <alias>   ör. /balance raichu
@@ -97,6 +97,52 @@ async function replyChunked(ctx: Context, text: string): Promise<void> {
   }
 }
 
+function escHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** HTML mesajları parça parça; mümkünse \\n\\n sınırında böler. */
+async function replyChunkedHtml(ctx: Context, html: string): Promise<void> {
+  const max = 3500;
+  if (html.length <= max) {
+    await ctx.reply(html, { parse_mode: "HTML" });
+    return;
+  }
+  const paras = html.split(/\n\n+/);
+  let buf = "";
+  for (const p of paras) {
+    const next = buf ? `${buf}\n\n${p}` : p;
+    if (next.length <= max) {
+      buf = next;
+      continue;
+    }
+    if (buf) {
+      await ctx.reply(buf, { parse_mode: "HTML" });
+      buf = "";
+    }
+    if (p.length <= max) {
+      buf = p;
+      continue;
+    }
+    const lines = p.split("\n");
+    let lb = "";
+    for (const line of lines) {
+      const cand = lb ? `${lb}\n${line}` : line;
+      if (cand.length <= max) lb = cand;
+      else {
+        if (lb) await ctx.reply(lb, { parse_mode: "HTML" });
+        lb = line;
+        while (lb.length > max) {
+          await ctx.reply(lb.slice(0, max), { parse_mode: "HTML" });
+          lb = lb.slice(max);
+        }
+      }
+    }
+    buf = lb;
+  }
+  if (buf) await ctx.reply(buf, { parse_mode: "HTML" });
+}
+
 export function registerBot(
   bot: Telegraf,
   agents: Map<string, AgentEntry>
@@ -145,11 +191,12 @@ export function registerBot(
     if (sub.toLowerCase() === "all") {
       await ctx.reply("Pozisyonlar çekiliyor…");
       const blocks: string[] = [];
+      const sepBetweenAgents = "\n\n───────────────\n\n";
       for (const a of [...agents.values()].sort((x, y) => x.alias.localeCompare(y.alias))) {
         const w = await resolveWalletAddress(a);
         if (!w) {
           blocks.push(
-            `${a.alias} — cüzdan alınamadı (AGENTS_JSON’da walletAddress veya geçerli apiKey ile /acp/me)`
+            `<b>${escHtml(a.alias)}</b>\n<i>Cüzdan alınamadı</i> — <code>walletAddress</code> veya <code>/acp/me</code>`
           );
           continue;
         }
@@ -157,10 +204,12 @@ export function registerBot(
           const rows = await fetchDgPositions(w);
           blocks.push(formatPositionBlock(a.alias, a.label, rows));
         } catch (e) {
-          blocks.push(`${a.alias} — ${errText(e).slice(0, 280)}`);
+          blocks.push(
+            `<b>${escHtml(a.alias)}</b>\n<i>${escHtml(errText(e).slice(0, 400))}</i>`
+          );
         }
       }
-      await replyChunked(ctx, blocks.join("\n\n"));
+      await replyChunkedHtml(ctx, blocks.join(sepBetweenAgents));
       return;
     }
 
@@ -173,7 +222,8 @@ export function registerBot(
     const wallet = await resolveWalletAddress(agent);
     if (!wallet) {
       await ctx.reply(
-        "Cüzdan bulunamadı. apiKey ile ACP GET /acp/me cevap vermiyorsa `walletAddress` ekle veya anahtarı kontrol et."
+        "<i>Cüzdan bulunamadı.</i> <code>apiKey</code> / <code>/acp/me</code> veya <code>walletAddress</code> kontrol et.",
+        { parse_mode: "HTML" }
       );
       return;
     }
@@ -181,9 +231,12 @@ export function registerBot(
     await ctx.reply("Çekiliyor…");
     try {
       const rows = await fetchDgPositions(wallet);
-      await replyChunked(ctx, formatPositionBlock(agent.alias, agent.label, rows));
+      await replyChunkedHtml(ctx, formatPositionBlock(agent.alias, agent.label, rows));
     } catch (e) {
-      await ctx.reply(`Hata: ${errText(e).slice(0, 3500)}`);
+      await ctx.reply(
+        `<b>Hata</b>\n<pre>${escHtml(errText(e).slice(0, 3500))}</pre>`,
+        { parse_mode: "HTML" }
+      );
     }
   });
 
