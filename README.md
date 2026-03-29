@@ -17,6 +17,7 @@ Super Saiyan Raichu bu repoda (`super-saiyan-raichu/virtuals-protocol-acp/config
 | Proje klasörü (D:\\) | Config yolu |
 | --- | --- |
 | `super-saiyan-raichu` | `virtuals-protocol-acp/config.json` (birincil) |
+| `degenswap` | `config.json` (repo kökü) |
 | `ichimoku-kinko-hyo` | `virtuals-protocol-acp/config.json` |
 | `pokedex` | `virtuals-protocol-acp/config.json` |
 | `virgen-capital` | `virtuals-protocol-acp/config.json` |
@@ -38,6 +39,7 @@ Varsayılan orkestra alias eşlemesi (isimden otomatik):
 | `welles` | Welles Wilder |
 | `ichimoku` | Ichimoku Kinko Hyo |
 | `virgen` | Virgen Capital |
+| `degenswap` | DegenSwap |
 
 Her agent için Virtuals/ACP’den ayrı **LITE agent API key** (`acp-...`) gerekir; `agents.example.json` şablonunu kopyalayıp anahtarları doldur.
 

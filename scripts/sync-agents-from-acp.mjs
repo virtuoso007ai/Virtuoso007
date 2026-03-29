@@ -23,6 +23,7 @@ const NAME_TO_ALIAS = [
   [/welles\s*wilder/i, "welles"],
   [/ichimoku/i, "ichimoku"],
   [/virgen\s*capital/i, "virgen"],
+  [/degenswap/i, "degenswap"],
 ];
 
 function aliasForName(name) {
@@ -75,6 +76,7 @@ function resolveConfigPaths() {
 
   const base = siblingRootDir();
   const optional = [
+    path.join(base, "degenswap", "config.json"),
     path.join(base, "ichimoku-kinko-hyo", "virtuals-protocol-acp", "config.json"),
     path.join(base, "pokedex", "virtuals-protocol-acp", "config.json"),
     path.join(base, "virgen-capital", "virtuals-protocol-acp", "config.json"),

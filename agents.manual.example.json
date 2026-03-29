@@ -23,5 +23,10 @@
     "alias": "virgen",
     "apiKey": "PASTE_ACP_KEY",
     "label": "Virgen Capital"
+  },
+  {
+    "alias": "degenswap",
+    "apiKey": "PASTE_ACP_KEY",
+    "label": "DegenSwap"
   }
 ]
