@@ -30,6 +30,7 @@ Açık pozlar (Degen Claw / HL):
 /positions <alias>   ör. /positions raichu
 /positions all       tüm agentlar
 (/poz aynı)
+Satır başı: 🟢 kâr · 🔴 zarar · ⚪ nötr veya bilinmiyor
 
 HL hesap bakiyesi (USDC):
 /balance <alias>   ör. /balance raichu

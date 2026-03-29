@@ -29,6 +29,16 @@ export async function fetchDgPositions(walletAddress: string): Promise<DgPositio
   return Array.isArray(data?.data) ? data.data : [];
 }
 
+/** uPnL sayısına göre satır başı işaret (Telegram’da güvenilir; HTML renk sınırlı). */
+function pnlRowIcon(unrealizedPnl: string | undefined): string {
+  if (unrealizedPnl == null || String(unrealizedPnl).trim() === "") return "⚪";
+  const n = Number.parseFloat(String(unrealizedPnl).replace(/,/g, ""));
+  if (!Number.isFinite(n)) return "⚪";
+  if (n > 0) return "🟢";
+  if (n < 0) return "🔴";
+  return "⚪";
+}
+
 export function formatPositionBlock(alias: string, label: string | undefined, rows: DgPositionRow[]): string {
   const head = label ? `${alias} — ${label}` : alias;
   if (rows.length === 0) return `${head}\n  (açık pozisyon yok)`;
@@ -41,7 +51,8 @@ export function formatPositionBlock(alias: string, label: string | undefined, ro
     const lev = r.leverage != null ? `${r.leverage}x` : "?x";
     const notional = r.notionalSize ?? "-";
     const pnl = r.unrealizedPnl != null ? r.unrealizedPnl : "-";
-    return `  • ${pair} ${side} | entry ${entry} | mark ${mark} | ${lev} | notional ${notional} | uPnL ${pnl}`;
+    const icon = pnlRowIcon(r.unrealizedPnl);
+    return `  ${icon} ${pair} ${side} | entry ${entry} | mark ${mark} | ${lev} | notional ${notional} | uPnL ${pnl}`;
   });
   return `${head}\n${lines.join("\n")}`;
 }
