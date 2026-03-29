@@ -44,7 +44,7 @@ function pnlRowIcon(unrealizedPnl: string | undefined): string {
 }
 
 /**
- * Telegram HTML — tek satır / pozisyon: · ayraçlı, entry + mark açık etiketli.
+ * Telegram HTML — tek satır / pozisyon; satır sonu \\n (Telegram &lt;br&gt; desteklemez).
  */
 export function formatPositionBlock(alias: string, label: string | undefined, rows: DgPositionRow[]): string {
   const title = label
@@ -52,7 +52,7 @@ export function formatPositionBlock(alias: string, label: string | undefined, ro
     : `<b>${esc(alias)}</b>`;
 
   if (rows.length === 0) {
-    return `${title}<br><i>Açık pozisyon yok</i>`;
+    return `${title}\n<i>Açık pozisyon yok</i>`;
   }
 
   const lines = rows.map((r) => {
@@ -67,5 +67,5 @@ export function formatPositionBlock(alias: string, label: string | undefined, ro
     return `${icon} <b>${pair}</b> · <i>${side}</i> · entry <code>${entry}</code> · mark <code>${mark}</code> · <code>${lev}</code> · N<code>${notional}</code> · u<code>${pnl}</code>`;
   });
 
-  return `${title}<br>${lines.join("<br>")}`;
+  return `${title}\n${lines.join("\n")}`;
 }
