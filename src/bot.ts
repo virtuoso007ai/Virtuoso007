@@ -6,6 +6,16 @@ import { createAcpClient, jobPerpClose, jobPerpModify, jobPerpOpen } from "./acp
 import { fetchDgAccount, formatAccountBlock } from "./account.js";
 import { fetchDgPositions, formatPositionBlock } from "./positions.js";
 import { resolveWalletAddress } from "./wallet-resolve.js";
+import {
+  buildLeaderboardHtml,
+  defaultSeasonId,
+  fetchLeaderboardAll,
+  fetchLeaderboardTop,
+  indexByWallet,
+  normalizeWallet,
+  type AgentLbMatch,
+  type LbApiEntry,
+} from "./leaderboard.js";
 
 const HELP = `Degen Claw — komutlar (/agents ile alias doğrula)
 
@@ -36,6 +46,11 @@ HL hesap bakiyesi (USDC):
 /balance <alias>   ör. /balance raichu
 /balance all
 (/bakiye /account aynı)
+
+Degen sıralama (Virtuals API):
+/leaderboard — tüm sayfalar + orkestra agentlarının sırası + ilk 20 özet
+/leaderboard top — tek istek, yalnızca ilk 20 + hızlı önizleme
+(/lb aynı) · Sezon: <code>DEGEN_LEADERBOARD_SEASON_ID</code> (varsayılan 1)
 
 /ping — sağlık`;
 
@@ -293,6 +308,66 @@ export function registerBot(
       await replyChunked(ctx, formatAccountBlock(agent.alias, agent.label, acc));
     } catch (e) {
       await ctx.reply(`Hata: ${errText(e).slice(0, 3500)}`);
+    }
+  });
+
+  bot.command(["leaderboard", "lb"], async (ctx) => {
+    const parts = commandRest(ctx);
+    const mode = parts[0]?.toLowerCase();
+    const seasonId = defaultSeasonId();
+
+    const collectMatches = async (byW: Map<string, LbApiEntry>): Promise<AgentLbMatch[]> => {
+      const out: AgentLbMatch[] = [];
+      for (const a of [...agents.values()].sort((x, y) => x.alias.localeCompare(y.alias))) {
+        const w = await resolveWalletAddress(a);
+        if (!w) {
+          out.push({ alias: a.alias, label: a.label, walletResolved: false, entry: null });
+          continue;
+        }
+        const entry = byW.get(normalizeWallet(w)) ?? null;
+        out.push({ alias: a.alias, label: a.label, walletResolved: true, entry });
+      }
+      return out;
+    };
+
+    try {
+      if (mode === "top") {
+        await ctx.reply("Leaderboard (ilk 20) çekiliyor…");
+        const { rows, seasonName, total } = await fetchLeaderboardTop(seasonId, 20);
+        const byW = indexByWallet(rows);
+        const matches = await collectMatches(byW);
+        await replyChunkedHtml(
+          ctx,
+          buildLeaderboardHtml({
+            seasonName,
+            total,
+            matches,
+            topRows: rows,
+            previewOnly: true,
+          })
+        );
+        return;
+      }
+
+      await ctx.reply("Leaderboard taranıyor (tüm sayfalar)…");
+      const { rows, seasonName, total } = await fetchLeaderboardAll(seasonId);
+      const byW = indexByWallet(rows);
+      const matches = await collectMatches(byW);
+      await replyChunkedHtml(
+        ctx,
+        buildLeaderboardHtml({
+          seasonName,
+          total,
+          matches,
+          topRows: rows.slice(0, 20),
+          previewOnly: false,
+        })
+      );
+    } catch (e) {
+      await ctx.reply(
+        `<b>Leaderboard hatası</b>\n<pre>${escHtml(errText(e).slice(0, 3500))}</pre>`,
+        { parse_mode: "HTML" }
+      );
     }
   });
 
