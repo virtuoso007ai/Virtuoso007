@@ -11,6 +11,7 @@ if (!token) {
 }
 
 const agents = loadAgents();
+console.log("[agents] aliases:", [...agents.keys()].sort().join(", "));
 const bot = new Telegraf(token);
 registerBot(bot, agents);
 
