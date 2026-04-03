@@ -18,19 +18,46 @@ export type PerpOpenParams = {
   side: "long" | "short";
   size: string;
   leverage: number;
+  stopLoss?: string;
+  takeProfit?: string;
+  orderType?: "market" | "limit";
+  limitPrice?: string;
 };
 
 export async function jobPerpOpen(client: AxiosInstance, p: PerpOpenParams) {
+  const serviceRequirements: Record<string, unknown> = {
+    action: "open",
+    pair: p.pair.toUpperCase(),
+    side: p.side,
+    size: p.size,
+    leverage: p.leverage,
+  };
+  if (p.stopLoss) serviceRequirements.stopLoss = p.stopLoss;
+  if (p.takeProfit) serviceRequirements.takeProfit = p.takeProfit;
+  if (p.orderType) serviceRequirements.orderType = p.orderType;
+  if (p.limitPrice) serviceRequirements.limitPrice = p.limitPrice;
+
   const body = {
     providerWalletAddress: DEGEN_CLAW_PROVIDER,
     jobOfferingName: "perp_trade",
-    serviceRequirements: {
-      action: "open",
-      pair: p.pair.toUpperCase(),
-      side: p.side,
-      size: p.size,
-      leverage: p.leverage,
-    },
+    serviceRequirements,
+  };
+  const { data } = await client.post<{ data?: { jobId?: number }; message?: string }>(
+    "/acp/jobs",
+    body
+  );
+  return data;
+}
+
+/** Signal-bot / ichimoku ile uyumlu: limit + TP + SL tek job’da (payload.degenClaw). */
+export async function jobPerpTradeOpenFull(
+  client: AxiosInstance,
+  serviceRequirements: Record<string, unknown>
+) {
+  const body = {
+    providerWalletAddress: DEGEN_CLAW_PROVIDER,
+    jobOfferingName: "perp_trade",
+    serviceRequirements,
   };
   const { data } = await client.post<{ data?: { jobId?: number }; message?: string }>(
     "/acp/jobs",
@@ -57,22 +84,39 @@ export async function jobPerpClose(client: AxiosInstance, pair: string) {
 
 export type PerpModifyParams = {
   pair: string;
-  /** Boşsa gönderilmez (Degen bazen tek alan kabul etmeyebilir). */
   stopLoss?: string;
   takeProfit?: string;
+  leverage?: number;
 };
 
 export async function jobPerpModify(client: AxiosInstance, p: PerpModifyParams) {
-  const req: Record<string, string> = {
+  const req: Record<string, string | number> = {
     pair: p.pair.toUpperCase(),
   };
   if (p.stopLoss != null && p.stopLoss !== "") req.stopLoss = p.stopLoss;
   if (p.takeProfit != null && p.takeProfit !== "") req.takeProfit = p.takeProfit;
+  if (p.leverage != null) req.leverage = p.leverage;
 
   const body = {
     providerWalletAddress: DEGEN_CLAW_PROVIDER,
     jobOfferingName: "perp_modify",
     serviceRequirements: req,
+  };
+  const { data } = await client.post<{ data?: { jobId?: number }; message?: string }>(
+    "/acp/jobs",
+    body
+  );
+  return data;
+}
+
+export async function jobPerpCancel(client: AxiosInstance, pair: string) {
+  const body = {
+    providerWalletAddress: DEGEN_CLAW_PROVIDER,
+    jobOfferingName: "perp_trade",
+    serviceRequirements: {
+      action: "cancel",
+      pair: pair.toUpperCase(),
+    },
   };
   const { data } = await client.post<{ data?: { jobId?: number }; message?: string }>(
     "/acp/jobs",

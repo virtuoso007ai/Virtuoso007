@@ -10,6 +10,8 @@ export type AgentEntry = {
   label?: string;
   /** Degen Claw (HL) cüzdanı — /positions için */
   walletAddress?: string;
+  /** `false` ise /webhook/signal oto-açmaz (signal-bot AGENTS_JSON ile uyumlu). */
+  autoTrade?: boolean;
 };
 
 function normalizeAlias(s: string): string {
@@ -34,11 +36,13 @@ function parseAgentsJson(raw: string): Map<string, AgentEntry> {
     if (!alias || !apiKey) continue;
     if (map.has(alias)) throw new Error(`Yinelenen alias: ${alias}`);
     const walletRaw = (row as { walletAddress?: string }).walletAddress?.trim();
+    const autoRaw = (row as { autoTrade?: boolean }).autoTrade;
     map.set(alias, {
       alias,
       apiKey,
       label: (row as { label?: string }).label?.trim(),
       walletAddress: walletRaw || undefined,
+      autoTrade: typeof autoRaw === "boolean" ? autoRaw : undefined,
     });
   }
   if (map.size === 0) throw new Error("Geçerli agent yok");
