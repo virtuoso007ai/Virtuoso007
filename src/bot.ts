@@ -17,6 +17,14 @@ import {
   type LbApiEntry,
 } from "./leaderboard.js";
 import { HELP } from "./help.js";
+import {
+  createStrategy,
+  listStrategies,
+  toggleStrategy,
+  deleteStrategy,
+  testStrategy,
+  formatStrategyList,
+} from "./strategy.js";
 
 /** /open@BotName arg1 arg2 → [arg1, arg2] */
 function commandRest(ctx: Context): string[] {
@@ -907,5 +915,159 @@ export function registerBot(
       }
     }
     await ctx.reply(results.join("\n"));
+  });
+
+  // ==================== STRATEGY MANAGEMENT ====================
+
+  bot.command("strategy", async (ctx) => {
+    const args = commandRest(ctx);
+    if (args.length === 0) {
+      await ctx.reply(
+        "Usage:\n" +
+        "/strategy create <alias> <type> [size] [lev] [tp%] [sl%]\n" +
+        "/strategy list [alias]\n" +
+        "/strategy enable <strategyId>\n" +
+        "/strategy disable <strategyId>\n" +
+        "/strategy delete <strategyId> <alias>\n" +
+        "/strategy test <strategyId>"
+      );
+      return;
+    }
+
+    const subcommand = args[0].toLowerCase();
+
+    try {
+      switch (subcommand) {
+        case "create": {
+          const [, alias, strategyType, size, lev, tp, sl] = args;
+          if (!alias || !strategyType) {
+            await ctx.reply("❌ Usage: /strategy create <alias> <type> [size] [lev] [tp%] [sl%]");
+            return;
+          }
+
+          const result = await createStrategy({
+            agentAlias: alias,
+            strategyType,
+            positionSizeUSD: size ? parseFloat(size) : 100,
+            leverage: lev ? parseInt(lev) : 3,
+            tpPercent: tp ? parseFloat(tp) : 3.5,
+            slPercent: sl ? parseFloat(sl) : 3,
+          });
+
+          if (result.success && result.strategy) {
+            await replyChunkedHtml(
+              ctx,
+              `✅ <b>Strategy Created</b>\n\n` +
+              `Agent: <code>${result.strategy.agentAlias}</code>\n` +
+              `Type: ${result.strategy.strategyType}\n` +
+              `Size: $${result.strategy.positionSizeUSD} | Lev: ${result.strategy.leverage}x\n` +
+              `TP: ${result.strategy.takeProfitPercent}% | SL: ${result.strategy.stopLossPercent}%\n` +
+              `Status: ⏸️ DISABLED (use /strategy enable to activate)\n\n` +
+              `ID: <code>${result.strategy.id}</code>`
+            );
+          } else {
+            await ctx.reply(`❌ Failed: ${result.error}`);
+          }
+          break;
+        }
+
+        case "list": {
+          const [, alias] = args;
+          const result = await listStrategies(alias);
+
+          if (result.success && result.strategies) {
+            await replyChunkedHtml(ctx, formatStrategyList(result.strategies));
+          } else {
+            await ctx.reply(`❌ Failed: ${result.error}`);
+          }
+          break;
+        }
+
+        case "enable": {
+          const [, strategyId] = args;
+          if (!strategyId) {
+            await ctx.reply("❌ Usage: /strategy enable <strategyId>");
+            return;
+          }
+
+          // Extract agent alias from strategyId (format: alias_type_timestamp)
+          const agentAlias = strategyId.split("_")[0];
+          const result = await toggleStrategy(strategyId, agentAlias, true);
+
+          if (result.success) {
+            await ctx.reply(`✅ Strategy enabled: ${strategyId}`);
+          } else {
+            await ctx.reply(`❌ Failed: ${result.error}`);
+          }
+          break;
+        }
+
+        case "disable": {
+          const [, strategyId] = args;
+          if (!strategyId) {
+            await ctx.reply("❌ Usage: /strategy disable <strategyId>");
+            return;
+          }
+
+          const agentAlias = strategyId.split("_")[0];
+          const result = await toggleStrategy(strategyId, agentAlias, false);
+
+          if (result.success) {
+            await ctx.reply(`✅ Strategy disabled: ${strategyId}`);
+          } else {
+            await ctx.reply(`❌ Failed: ${result.error}`);
+          }
+          break;
+        }
+
+        case "delete": {
+          const [, strategyId, alias] = args;
+          if (!strategyId || !alias) {
+            await ctx.reply("❌ Usage: /strategy delete <strategyId> <alias>");
+            return;
+          }
+
+          const result = await deleteStrategy(strategyId, alias);
+
+          if (result.success) {
+            await ctx.reply(`✅ Strategy deleted: ${strategyId}`);
+          } else {
+            await ctx.reply(`❌ Failed: ${result.error}`);
+          }
+          break;
+        }
+
+        case "test": {
+          const [, strategyId] = args;
+          if (!strategyId) {
+            await ctx.reply("❌ Usage: /strategy test <strategyId>");
+            return;
+          }
+
+          const result = await testStrategy(strategyId);
+
+          if (result.success && result.signal) {
+            const sig = result.signal.signal;
+            await replyChunkedHtml(
+              ctx,
+              `📊 <b>Strategy Test Result</b>\n\n` +
+              `Signal: <b>${sig.signal.toUpperCase()}</b>\n` +
+              `Strength: ${sig.strength}%\n` +
+              `Reason: ${sig.reason}\n` +
+              `Price: $${result.signal.latestPrice}\n` +
+              `Candles: ${result.signal.candleCount}`
+            );
+          } else {
+            await ctx.reply(`❌ Failed: ${result.error}`);
+          }
+          break;
+        }
+
+        default:
+          await ctx.reply(`❌ Unknown subcommand: ${subcommand}`);
+      }
+    } catch (error) {
+      await ctx.reply(`❌ Error: ${errText(error)}`);
+    }
   });
 }

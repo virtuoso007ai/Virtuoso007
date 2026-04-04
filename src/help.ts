@@ -16,6 +16,22 @@ Multi-agent (virgülle ayrılmış alias veya "all"):
 /modifymulti <alias1,alias2,...> <PAIR> [SL] [TP] [leverage]
 /modifyall <PAIR> [SL] [TP] [leverage]
 
+Strategy (otomatik trading):
+/strategy create <alias> <strategyType> [size] [lev] [tp%] [sl%]
+/strategy list [alias]
+/strategy enable <strategyId>
+/strategy disable <strategyId>
+/strategy delete <strategyId> <alias>
+/strategy test <strategyId>
+
+Strategy types:
+- rsi_reversal
+- ema_cross
+- macd_histogram
+- macd_crossover
+- trendtrader_combined
+- rsi_divergence
+
 Ornek:
 /open raichu ETH long 50 10 → market
 /open raichu ETH long 50 10 2000 2200 → TP/SL
@@ -27,8 +43,14 @@ Ornek:
 /modify raichu ETH - - 15 → sadece leverage
 (- = degistirme)
 
+Strategy ornek:
+/strategy create raichu rsi_reversal 100 3 3.5 3
+/strategy list raichu
+/strategy enable raichu_rsi_reversal_123
+
 Liquidation: /liq <alias> | /liq all
 Pozlar: /positions <alias> | /positions all (/poz)
 Bakiye: /balance <alias> | /balance all (/bakiye)
 Leaderboard: /leaderboard | /leaderboard top (/lb)
 /ping — saglik`;
+
