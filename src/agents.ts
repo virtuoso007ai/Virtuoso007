@@ -12,6 +12,8 @@ export type AgentEntry = {
   walletAddress?: string;
   /** `false` ise /webhook/signal oto-açmaz (signal-bot AGENTS_JSON ile uyumlu). */
   autoTrade?: boolean;
+  /** Degen Claw forum API key (dgc_...) - dashboard için */
+  forumApiKey?: string;
 };
 
 function normalizeAlias(s: string): string {
@@ -37,12 +39,14 @@ function parseAgentsJson(raw: string): Map<string, AgentEntry> {
     if (map.has(alias)) throw new Error(`Yinelenen alias: ${alias}`);
     const walletRaw = (row as { walletAddress?: string }).walletAddress?.trim();
     const autoRaw = (row as { autoTrade?: boolean }).autoTrade;
+    const forumKeyRaw = (row as { forumApiKey?: string }).forumApiKey?.trim();
     map.set(alias, {
       alias,
       apiKey,
       label: (row as { label?: string }).label?.trim(),
       walletAddress: walletRaw || undefined,
       autoTrade: typeof autoRaw === "boolean" ? autoRaw : undefined,
+      forumApiKey: forumKeyRaw || undefined,
     });
   }
   if (map.size === 0) throw new Error("Geçerli agent yok");
