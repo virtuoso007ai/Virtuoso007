@@ -126,17 +126,53 @@ http
     }
   });
 
-bot.launch().then(() => {
-  console.log("[telegram] bot çalışıyor (long polling)");
-  
-  // Start strategy scheduler (runs every 15 minutes)
-  if (process.env.ENABLE_STRATEGY_SCHEDULER === "true") {
-    startStrategyScheduler();
-    console.log("[scheduler] ✅ Strategy monitor scheduler started");
-  } else {
-    console.log("[scheduler] ⏸️  Strategy scheduler disabled (set ENABLE_STRATEGY_SCHEDULER=true to enable)");
+// Start strategy scheduler INDEPENDENTLY of Telegram bot
+if (process.env.ENABLE_STRATEGY_SCHEDULER === "true") {
+  startStrategyScheduler();
+  console.log("[scheduler] ✅ Strategy monitor scheduler started");
+} else {
+  console.log("[scheduler] ⏸️  Strategy scheduler disabled (set ENABLE_STRATEGY_SCHEDULER=true to enable)");
+}
+
+// Launch Telegram bot with retry logic for 409 Conflict
+async function launchBot(maxRetries = 5) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // Always delete any existing webhook before starting long polling
+      console.log(`[telegram] Attempt ${attempt}/${maxRetries}: Deleting webhook...`);
+      await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+      
+      // Wait a moment to ensure Telegram releases the connection
+      if (attempt > 1) {
+        const delay = Math.min(attempt * 5000, 30000);
+        console.log(`[telegram] Waiting ${delay / 1000}s before retry...`);
+        await new Promise(r => setTimeout(r, delay));
+      }
+      
+      console.log(`[telegram] Starting long polling...`);
+      await bot.launch({ dropPendingUpdates: true });
+      console.log("[telegram] ✅ Bot çalışıyor (long polling)");
+      return;
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const is409 = errMsg.includes("409") || errMsg.includes("Conflict");
+      
+      if (is409 && attempt < maxRetries) {
+        console.warn(`[telegram] ⚠️ 409 Conflict on attempt ${attempt}/${maxRetries}. Retrying...`);
+      } else {
+        console.error(`[telegram] ❌ Failed to start bot after ${attempt} attempts:`, errMsg);
+        if (is409) {
+          console.error("[telegram] 💡 409 means another bot instance is using this token.");
+          console.error("[telegram] 💡 Check Railway for duplicate services/deployments.");
+          console.error("[telegram] 💡 Bot commands won't work, but strategy scheduler WILL continue running.");
+        }
+        return; // Don't crash - let scheduler keep running
+      }
+    }
   }
-});
+}
+
+launchBot();
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
