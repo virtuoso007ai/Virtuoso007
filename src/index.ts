@@ -121,8 +121,6 @@ http
     console.log(`[health] http://0.0.0.0:${port}/`);
     if (webhookSecret) {
       console.log(`[webhook] POST http://0.0.0.0:${port}/webhook/signal (x-signal-secret veya Bearer)`);
-    } else {
-      console.warn("[webhook] SIGNAL_WEBHOOK_SECRET yok — /webhook/signal 503 döner");
     }
   });
 
