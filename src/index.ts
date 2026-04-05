@@ -6,6 +6,7 @@ import { Telegraf } from "telegraf";
 import { loadAgents } from "./agents.js";
 import { registerBot } from "./bot.js";
 import { executeSignalAutoTrade } from "./signalWebhook.js";
+import { startStrategyScheduler } from "./strategy-scheduler.js";
 
 const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
 if (!token) {
@@ -127,6 +128,14 @@ http
 
 bot.launch().then(() => {
   console.log("[telegram] bot çalışıyor (long polling)");
+  
+  // Start strategy scheduler (runs every 15 minutes)
+  if (process.env.ENABLE_STRATEGY_SCHEDULER === "true") {
+    startStrategyScheduler();
+    console.log("[scheduler] ✅ Strategy monitor scheduler started");
+  } else {
+    console.log("[scheduler] ⏸️  Strategy scheduler disabled (set ENABLE_STRATEGY_SCHEDULER=true to enable)");
+  }
 });
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
