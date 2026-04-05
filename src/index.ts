@@ -134,39 +134,47 @@ if (process.env.ENABLE_STRATEGY_SCHEDULER === "true") {
   console.log("[scheduler] ⏸️  Strategy scheduler disabled (set ENABLE_STRATEGY_SCHEDULER=true to enable)");
 }
 
-// Launch Telegram bot with retry logic for 409 Conflict
-async function launchBot(maxRetries = 5) {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+// Launch Telegram bot with startup delay + retry logic for 409 Conflict
+async function launchBot() {
+  // Wait 20s on startup for previous container's long-polling to expire
+  // Railway doesn't gracefully kill old containers during redeploy
+  console.log("[telegram] Waiting 20s for previous instance to release polling...");
+  await new Promise(r => setTimeout(r, 20000));
+  
+  // Delete any stale webhook
+  try {
+    await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+    console.log("[telegram] Webhook cleared");
+  } catch (e) {
+    console.warn("[telegram] deleteWebhook failed (non-fatal):", e);
+  }
+  
+  // Retry loop with increasing delays
+  const delays = [0, 10000, 20000, 30000, 60000]; // 0s, 10s, 20s, 30s, 60s
+  
+  for (let attempt = 0; attempt < delays.length; attempt++) {
+    if (delays[attempt] > 0) {
+      console.log(`[telegram] Retry ${attempt}/${delays.length - 1}: waiting ${delays[attempt] / 1000}s...`);
+      await new Promise(r => setTimeout(r, delays[attempt]));
+    }
+    
     try {
-      // Always delete any existing webhook before starting long polling
-      console.log(`[telegram] Attempt ${attempt}/${maxRetries}: Deleting webhook...`);
-      await bot.telegram.deleteWebhook({ drop_pending_updates: true });
-      
-      // Wait a moment to ensure Telegram releases the connection
-      if (attempt > 1) {
-        const delay = Math.min(attempt * 5000, 30000);
-        console.log(`[telegram] Waiting ${delay / 1000}s before retry...`);
-        await new Promise(r => setTimeout(r, delay));
-      }
-      
-      console.log(`[telegram] Starting long polling...`);
+      console.log(`[telegram] Attempt ${attempt + 1}/${delays.length}: Starting long polling...`);
       await bot.launch({ dropPendingUpdates: true });
       console.log("[telegram] ✅ Bot çalışıyor (long polling)");
-      return;
+      return; // success!
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
       const is409 = errMsg.includes("409") || errMsg.includes("Conflict");
       
-      if (is409 && attempt < maxRetries) {
-        console.warn(`[telegram] ⚠️ 409 Conflict on attempt ${attempt}/${maxRetries}. Retrying...`);
+      if (is409 && attempt < delays.length - 1) {
+        console.warn(`[telegram] ⚠️ 409 Conflict on attempt ${attempt + 1}. Will retry...`);
       } else {
-        console.error(`[telegram] ❌ Failed to start bot after ${attempt} attempts:`, errMsg);
+        console.error(`[telegram] ❌ Failed after ${attempt + 1} attempts:`, errMsg);
         if (is409) {
-          console.error("[telegram] 💡 409 means another bot instance is using this token.");
-          console.error("[telegram] 💡 Check Railway for duplicate services/deployments.");
-          console.error("[telegram] 💡 Bot commands won't work, but strategy scheduler WILL continue running.");
+          console.error("[telegram] 💡 Bot commands disabled. Strategy scheduler continues.");
         }
-        return; // Don't crash - let scheduler keep running
+        return; // Don't crash
       }
     }
   }
@@ -174,5 +182,13 @@ async function launchBot(maxRetries = 5) {
 
 launchBot();
 
-process.once("SIGINT", () => bot.stop("SIGINT"));
-process.once("SIGTERM", () => bot.stop("SIGTERM"));
+process.once("SIGINT", () => {
+  console.log("[shutdown] SIGINT received, stopping bot...");
+  bot.stop("SIGINT");
+});
+process.once("SIGTERM", () => {
+  console.log("[shutdown] SIGTERM received, stopping bot...");
+  bot.stop("SIGTERM");
+  // Give bot 3s to cleanly close the polling connection, then exit
+  setTimeout(() => process.exit(0), 3000);
+});
