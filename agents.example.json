@@ -1,0 +1,50 @@
+[
+  {
+    "alias": "raichu",
+    "apiKey": "PASTE_ACP_KEY",
+    "label": "Super Saiyan Raichu",
+    "walletAddress": "0x0000000000000000000000000000000000000000"
+  },
+  {
+    "alias": "taxerclaw",
+    "apiKey": "PASTE_ACP_KEY",
+    "label": "Wolf Agent (Taxerclaw)"
+  },
+  {
+    "alias": "pokedex",
+    "apiKey": "PASTE_ACP_KEY",
+    "label": "Pokedex"
+  },
+  {
+    "alias": "welles",
+    "apiKey": "PASTE_ACP_KEY",
+    "label": "Welles Wilder"
+  },
+  {
+    "alias": "ichimoku",
+    "apiKey": "PASTE_ACP_KEY",
+    "label": "Ichimoku Kinko Hyo"
+  },
+  {
+    "alias": "virgen",
+    "apiKey": "PASTE_ACP_KEY",
+    "label": "Virgen Capital"
+  },
+  {
+    "alias": "degenswap",
+    "apiKey": "PASTE_ACP_KEY",
+    "label": "DegenSwap"
+  },
+  {
+    "alias": "squirtle",
+    "apiKey": "PASTE_ACP_KEY",
+    "label": "Squirtle Squad",
+    "walletAddress": "0x0000000000000000000000000000000000000000"
+  },
+  {
+    "alias": "friday",
+    "apiKey": "PASTE_ACP_KEY",
+    "label": "FRIDAY",
+    "walletAddress": "0x0000000000000000000000000000000000000000"
+  }
+]
