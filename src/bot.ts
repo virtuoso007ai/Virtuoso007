@@ -78,7 +78,8 @@ async function cancelLimitsOnPair(
           : parseInt(oidStr, 10);
       }
       
-      const data = await jobPerpCancelLimit(client, p, oidNum);
+      // Degen API'ye normalized pair gönder (HYPE değil HYPE-USD)
+      const data = await jobPerpCancelLimit(client, normalizedPair, oidNum);
       out.push(`oid ${row.oid} → job ${data?.data?.jobId ?? "?"}`);
     } catch (e) {
       out.push(`oid ${row.oid} → ${errText(e).slice(0, 160)}`);
