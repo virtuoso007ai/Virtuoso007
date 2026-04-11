@@ -78,9 +78,11 @@ async function cancelLimitsOnPair(
           : parseInt(oidStr, 10);
       }
       
-      // Degen API'ye normalized pair gönder (HYPE değil HYPE-USD)
-      const data = await jobPerpCancelLimit(client, normalizedPair, oidNum);
-      out.push(`oid ${row.oid} → job ${data?.data?.jobId ?? "?"}`);
+      // Degen API'ye base asset gönder (HYPE-USD değil HYPE)
+      // HL coin formatından base'i çıkar: "HYPE-USD" → "HYPE"
+      const basePair = String(row.coin).split("-")[0].toUpperCase();
+      const data = await jobPerpCancelLimit(client, basePair, oidNum);
+      out.push(`oid ${row.oid} (${row.coin}) → job ${data?.data?.jobId ?? "?"}`);
     } catch (e) {
       out.push(`oid ${row.oid} → ${errText(e).slice(0, 160)}`);
     }
