@@ -10,6 +10,8 @@ export type AgentEntry = {
   label?: string;
   /** Degen Claw (HL) cüzdanı — /positions için */
   walletAddress?: string;
+  /** Hyperliquid subaccount cüzdanı (açık limitler buradan sorgulanır; yoksa walletAddress kullanılır) */
+  hlWallet?: string;
   /** `false` ise /webhook/signal oto-açmaz (signal-bot AGENTS_JSON ile uyumlu). */
   autoTrade?: boolean;
   /** Degen Claw forum API key (dgc_...) - dashboard için */
@@ -38,6 +40,7 @@ function parseAgentsJson(raw: string): Map<string, AgentEntry> {
     if (!alias || !apiKey) continue;
     if (map.has(alias)) throw new Error(`Yinelenen alias: ${alias}`);
     const walletRaw = (row as { walletAddress?: string }).walletAddress?.trim();
+    const hlWalletRaw = (row as { hlWallet?: string }).hlWallet?.trim();
     const autoRaw = (row as { autoTrade?: boolean }).autoTrade;
     const forumKeyRaw = (row as { forumApiKey?: string }).forumApiKey?.trim();
     map.set(alias, {
@@ -45,6 +48,7 @@ function parseAgentsJson(raw: string): Map<string, AgentEntry> {
       apiKey,
       label: (row as { label?: string }).label?.trim(),
       walletAddress: walletRaw || undefined,
+      hlWallet: hlWalletRaw || undefined,
       autoTrade: typeof autoRaw === "boolean" ? autoRaw : undefined,
       forumApiKey: forumKeyRaw || undefined,
     });
@@ -74,4 +78,9 @@ export function loadAgents(): Map<string, AgentEntry> {
 
 export function getAgent(map: Map<string, AgentEntry>, alias: string): AgentEntry | undefined {
   return map.get(normalizeAlias(alias));
+}
+
+/** HL subaccount cüzdanı — önce `hlWallet`, yoksa `walletAddress`. */
+export function getHlWallet(agent: AgentEntry): string | undefined {
+  return agent.hlWallet?.trim() || agent.walletAddress?.trim();
 }

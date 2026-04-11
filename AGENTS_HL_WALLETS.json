@@ -1,0 +1,14 @@
+[
+  {"alias":"doctorstrange","hlWallet":"0x05cb87ed2d70180b75a3b1624cd97188e9eb8737","buyerWallet":"0x9375e307dcbd3d85e7a0fa65f4325c2cd8a6756f"},
+  {"alias":"friday","hlWallet":"0x28544b7bfce18b2be91ec1c4260fe963cd4eae39","buyerWallet":"0x39d95d457211dedc2934a88710e883c2f17152d7"},
+  {"alias":"ichimoku","hlWallet":"0xe9b8304b59bf2f8e076718e41bb913d16dac0a04","buyerWallet":"0x4df5a7c7da46b62f94fc7f7a23ebdb5723464c93"},
+  {"alias":"pokedex","hlWallet":"0x7de0be765a18ca8845119f001672a12053740bc7","buyerWallet":"0xd13f43f8ac575717bd627f03c19ccb9cc8de333f"},
+  {"alias":"raichu","hlWallet":"0xbf8e97ddf1d411c3a5c415bd5c219d86f31ad4d3","buyerWallet":"0x09ee47977167ef955960761cad68bd0e3439c8f8"},
+  {"alias":"redkid","hlWallet":"0x4a0579d36d8f5818e0aadac1228b57847a3042eb","buyerWallet":"0xb119a2153fbf7ed81d26db69f935bbaeca1e033d"},
+  {"alias":"spongebob","hlWallet":"0x2e51dd8781dd461e17dacce83e326c140483d552","buyerWallet":"0xf7643ac4723c1fca4fa77c13becc6dacb1d0c194"},
+  {"alias":"squirtle","hlWallet":"0x822bd4cb4704ea38a1696637e45fc7a085761eb9","buyerWallet":"0x8e83c971af1f3c7b88db202f5425086ba494c7ca"},
+  {"alias":"taxerclaw","hlWallet":"0x2430d0cde7f7ed279274cf3d4b9ecf0dd1f4df6e","buyerWallet":"0xcc4188f955b7594b272e7bae0e082089a060cb31"},
+  {"alias":"venom","hlWallet":"0xd2eceab2ffe9f5e7037f1153bae2cb17e17f7e38","buyerWallet":"0xf785c51b30d869757d3fb34f178591b6d33b6cbd"},
+  {"alias":"virgen","hlWallet":"0xbdc9b3db49efe531ea365d040eca9eff52f0a48c","buyerWallet":"0xa2c55e445a4b584e73d799e42431ec121a65edd0"},
+  {"alias":"welles","hlWallet":"0x49ecbd585611b68a70617b8acfe38d44f1a22f73","buyerWallet":"0x57e3a4877fa63d3803a15daeb2c7ac0fe30583ce"}
+]

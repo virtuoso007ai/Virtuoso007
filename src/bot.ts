@@ -1,12 +1,12 @@
 import axios from "axios";
 import { Telegraf, type Context } from "telegraf";
 import type { AgentEntry } from "./agents.js";
-import { getAgent } from "./agents.js";
-import { createAcpClient, jobPerpClose, jobPerpModify, jobPerpOpen, jobPerpCancelLimit } from "./acp.js";
-import { fetchHyperliquidOpenOrders } from "./openOrders.js";
-import { resolveWalletAddress } from "./wallet-resolve.js";
+import { getAgent, getHlWallet } from "./agents.js";
 import { degenAccountErrorHint, fetchDgAccount, formatAccountBlock } from "./account.js";
 import { fetchDgPositions, formatPositionBlock } from "./positions.js";
+import { resolveWalletAddress } from "./wallet-resolve.js";
+import { createAcpClient, jobPerpClose, jobPerpModify, jobPerpOpen, jobPerpCancelLimit } from "./acp.js";
+import { fetchHyperliquidOpenOrders } from "./openOrders.js";
 import {
   buildLeaderboardHtml,
   defaultSeasonId,
@@ -488,9 +488,9 @@ export function registerBot(
         await ctx.reply(`✅ İptal:\n${JSON.stringify(data, null, 2)}`);
         return;
       }
-      const wallet = await resolveWalletAddress(agent);
+      const wallet = getHlWallet(agent);
       if (!wallet) {
-        await ctx.reply("Hata: cüzdan çözülemedi (AGENTS_JSON wallet veya /acp/me).");
+        await ctx.reply("Hata: HL cüzdanı yok (AGENTS_JSON hlWallet veya walletAddress).");
         return;
       }
       const lines = await cancelLimitsOnPair(client, pair, wallet);
@@ -862,9 +862,9 @@ export function registerBot(
     for (const [alias, agent] of agents) {
       try {
         const client = createAcpClient(agent.apiKey);
-        const wallet = await resolveWalletAddress(agent);
+        const wallet = getHlWallet(agent);
         if (!wallet) {
-          results.push(`❌ ${alias}: cüzdan yok`);
+          results.push(`❌ ${alias}: HL cüzdan yok`);
           continue;
         }
         const lines = await cancelLimitsOnPair(client, pair, wallet);
