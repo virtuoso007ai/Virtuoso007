@@ -51,9 +51,17 @@ async function cancelLimitsOnPair(
 ): Promise<string[]> {
   const p = pair.toUpperCase();
   const rows = await fetchHyperliquidOpenOrders(wallet);
-  const hits = rows.filter((r) => String(r.coin).toUpperCase() === p);
+  
+  // HL coin format: "HYPE-USD", "BTC-USD", vb. — kullanıcı sadece "HYPE" yazınca "-USD" ekle
+  const normalizedPair = p.includes("-") ? p : `${p}-USD`;
+  
+  const hits = rows.filter((r) => {
+    const coin = String(r.coin).toUpperCase();
+    return coin === normalizedPair || coin === p;
+  });
+  
   if (hits.length === 0) {
-    return ["Bu paritede açık limit emri yok (HL)."];
+    return [`Bu paritede açık limit emri yok (HL: ${normalizedPair})`];
   }
   const out: string[] = [];
   for (const row of hits) {
