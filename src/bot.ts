@@ -66,7 +66,19 @@ async function cancelLimitsOnPair(
   const out: string[] = [];
   for (const row of hits) {
     try {
-      const data = await jobPerpCancelLimit(client, p, row.oid);
+      // oid sayıya çevir (hex string olabilir, parseInt ile parse et)
+      let oidNum: number;
+      if (typeof row.oid === "number") {
+        oidNum = row.oid;
+      } else {
+        // String ise: hex ("0x...") veya decimal parse et
+        const oidStr = String(row.oid);
+        oidNum = oidStr.startsWith("0x") 
+          ? parseInt(oidStr, 16) 
+          : parseInt(oidStr, 10);
+      }
+      
+      const data = await jobPerpCancelLimit(client, p, oidNum);
       out.push(`oid ${row.oid} → job ${data?.data?.jobId ?? "?"}`);
     } catch (e) {
       out.push(`oid ${row.oid} → ${errText(e).slice(0, 160)}`);
@@ -488,11 +500,15 @@ export function registerBot(
     try {
       const client = createAcpClient(agent.apiKey);
       if (oidStr) {
-        if (!/^\d+$/.test(oidStr)) {
-          await ctx.reply("Hata: oid yalnızca rakam olmalı (örn. 377198646148).");
+        if (!/^(0x)?[0-9a-fA-F]+$/.test(oidStr)) {
+          await ctx.reply("Hata: oid rakam veya hex olmalı (örn. 377198646148 veya 0x57...).");
           return;
         }
-        const data = await jobPerpCancelLimit(client, pair, oidStr);
+        // Hex ise parse et, değilse ondalık sayı
+        const oidNum = oidStr.startsWith("0x") 
+          ? parseInt(oidStr, 16) 
+          : parseInt(oidStr, 10);
+        const data = await jobPerpCancelLimit(client, pair, oidNum);
         await ctx.reply(`✅ İptal:\n${JSON.stringify(data, null, 2)}`);
         return;
       }
