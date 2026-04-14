@@ -1,7 +1,7 @@
 import axios from "axios";
 import { Telegraf, type Context } from "telegraf";
 import type { AgentEntry } from "./agents.js";
-import { getAgent } from "./agents.js";
+import { getAgent, getHlWallet } from "./agents.js";
 import { degenAccountErrorHint, fetchDgAccount, formatAccountBlock } from "./account.js";
 import { fetchDgPositions, formatPositionBlock } from "./positions.js";
 import { resolveWalletAddress } from "./wallet-resolve.js";
@@ -47,7 +47,8 @@ function errText(e: unknown): string {
 async function cancelLimitsOnPair(
   client: ReturnType<typeof createAcpClient>,
   pair: string,
-  wallet: string
+  wallet: string,
+  hlUser?: string
 ): Promise<string[]> {
   const p = pair.toUpperCase();
   const rows = await fetchHyperliquidOpenOrders(wallet);
@@ -81,7 +82,7 @@ async function cancelLimitsOnPair(
       // Degen API'ye base asset gönder (HYPE-USD değil HYPE)
       // HL coin formatından base'i çıkar: "HYPE-USD" → "HYPE"
       const basePair = String(row.coin).split("-")[0].toUpperCase();
-      const data = await jobPerpCancelLimit(client, basePair, oidNum);
+      const data = await jobPerpCancelLimit(client, basePair, oidNum, hlUser);
       out.push(`oid ${row.oid} (${row.coin}) → job ${data?.data?.jobId ?? "?"}`);
     } catch (e) {
       out.push(`oid ${row.oid} → ${errText(e).slice(0, 160)}`);
@@ -434,6 +435,7 @@ export function registerBot(
 
     try {
       const client = createAcpClient(agent.apiKey);
+      const hlUser = getHlWallet(agent);
       const data = await jobPerpOpen(client, {
         pair,
         side,
@@ -443,6 +445,7 @@ export function registerBot(
         takeProfit,
         orderType,
         limitPrice,
+        hyperliquidUser: hlUser,
       });
       await ctx.reply(`Tamam.\n${JSON.stringify(data, null, 2)}`);
     } catch (e) {
@@ -469,7 +472,8 @@ export function registerBot(
 
     try {
       const client = createAcpClient(agent.apiKey);
-      const data = await jobPerpClose(client, pair);
+      const hlUser = getHlWallet(agent);
+      const data = await jobPerpClose(client, pair, hlUser);
       await ctx.reply(JSON.stringify(data, null, 2));
     } catch (e) {
       await ctx.reply(`Hata: ${errText(e).slice(0, 3500)}`);
@@ -502,6 +506,7 @@ export function registerBot(
 
     try {
       const client = createAcpClient(agent.apiKey);
+      const hlUser = getHlWallet(agent);
       if (oidStr) {
         if (!/^(0x)?[0-9a-fA-F]+$/.test(oidStr)) {
           await ctx.reply("Hata: oid rakam veya hex olmalı (örn. 377198646148 veya 0x57...).");
@@ -511,7 +516,7 @@ export function registerBot(
         const oidNum = oidStr.startsWith("0x") 
           ? parseInt(oidStr, 16) 
           : parseInt(oidStr, 10);
-        const data = await jobPerpCancelLimit(client, pair, oidNum);
+        const data = await jobPerpCancelLimit(client, pair, oidNum, hlUser);
         await ctx.reply(`✅ İptal:\n${JSON.stringify(data, null, 2)}`);
         return;
       }
@@ -522,7 +527,7 @@ export function registerBot(
         );
         return;
       }
-      const lines = await cancelLimitsOnPair(client, pair, wallet);
+      const lines = await cancelLimitsOnPair(client, pair, wallet, hlUser);
       await ctx.reply(`✅ Sonuç:\n${lines.join("\n")}`);
     } catch (e) {
       await ctx.reply(`Hata: ${errText(e).slice(0, 3500)}`);
@@ -565,7 +570,12 @@ export function registerBot(
 
     try {
       const client = createAcpClient(agent.apiKey);
-      const data = await jobPerpModify(client, { pair, stopLoss, takeProfit, leverage });
+      const hlUser = getHlWallet(agent);
+      const data = await jobPerpModify(
+        client,
+        { pair, stopLoss, takeProfit, leverage },
+        hlUser
+      );
       await ctx.reply(JSON.stringify(data, null, 2));
     } catch (e) {
       await ctx.reply(`Hata: ${errText(e).slice(0, 3500)}`);
@@ -692,6 +702,7 @@ export function registerBot(
       }
       try {
         const client = createAcpClient(agent.apiKey);
+        const hlUser = getHlWallet(agent);
         const data = await jobPerpOpen(client, {
           pair,
           side,
@@ -701,6 +712,7 @@ export function registerBot(
           takeProfit,
           orderType,
           limitPrice,
+          hyperliquidUser: hlUser,
         });
         const jobId = data?.data?.jobId;
         results.push(`✅ ${alias}: job ${jobId ?? "?"}`);
@@ -749,6 +761,7 @@ export function registerBot(
     for (const [alias, agent] of agents) {
       try {
         const client = createAcpClient(agent.apiKey);
+        const hlUser = getHlWallet(agent);
         const data = await jobPerpOpen(client, {
           pair,
           side,
@@ -758,6 +771,7 @@ export function registerBot(
           takeProfit,
           orderType,
           limitPrice,
+          hyperliquidUser: hlUser,
         });
         const jobId = data?.data?.jobId;
         results.push(`✅ ${alias}: job ${jobId ?? "?"}`);
@@ -794,7 +808,8 @@ export function registerBot(
       }
       try {
         const client = createAcpClient(agent.apiKey);
-        const data = await jobPerpClose(client, pair);
+        const hlUser = getHlWallet(agent);
+        const data = await jobPerpClose(client, pair, hlUser);
         const jobId = data?.data?.jobId;
         results.push(`✅ ${alias}: job ${jobId ?? "?"}`);
       } catch (e) {
@@ -822,7 +837,8 @@ export function registerBot(
     for (const [alias, agent] of agents) {
       try {
         const client = createAcpClient(agent.apiKey);
-        const data = await jobPerpClose(client, pair);
+        const hlUser = getHlWallet(agent);
+        const data = await jobPerpClose(client, pair, hlUser);
         const jobId = data?.data?.jobId;
         results.push(`✅ ${alias}: job ${jobId ?? "?"}`);
       } catch (e) {
@@ -862,7 +878,8 @@ export function registerBot(
           results.push(`❌ ${alias}: cüzdan yok`);
           continue;
         }
-        const lines = await cancelLimitsOnPair(client, pair, wallet);
+        const hlUser = getHlWallet(agent);
+        const lines = await cancelLimitsOnPair(client, pair, wallet, hlUser);
         results.push(`✅ ${alias}: ${lines.join(" | ")}`);
       } catch (e) {
         results.push(`❌ ${alias}: ${errText(e).slice(0, 200)}`);
@@ -896,7 +913,8 @@ export function registerBot(
           results.push(`❌ ${alias}: HL cüzdan yok`);
           continue;
         }
-        const lines = await cancelLimitsOnPair(client, pair, wallet);
+        const hlUser = getHlWallet(agent);
+        const lines = await cancelLimitsOnPair(client, pair, wallet, hlUser);
         results.push(`✅ ${alias}: ${lines.join(" | ")}`);
       } catch (e) {
         results.push(`❌ ${alias}: ${errText(e).slice(0, 200)}`);
@@ -947,7 +965,12 @@ export function registerBot(
       }
       try {
         const client = createAcpClient(agent.apiKey);
-        const data = await jobPerpModify(client, { pair, stopLoss, takeProfit, leverage });
+        const hlUser = getHlWallet(agent);
+        const data = await jobPerpModify(
+          client,
+          { pair, stopLoss, takeProfit, leverage },
+          hlUser
+        );
         const jobId = data?.data?.jobId;
         results.push(`✅ ${alias}: job ${jobId ?? "?"}`);
       } catch (e) {
@@ -994,7 +1017,12 @@ export function registerBot(
     for (const [alias, agent] of agents) {
       try {
         const client = createAcpClient(agent.apiKey);
-        const data = await jobPerpModify(client, { pair, stopLoss, takeProfit, leverage });
+        const hlUser = getHlWallet(agent);
+        const data = await jobPerpModify(
+          client,
+          { pair, stopLoss, takeProfit, leverage },
+          hlUser
+        );
         const jobId = data?.data?.jobId;
         results.push(`✅ ${alias}: job ${jobId ?? "?"}`);
       } catch (e) {

@@ -1,4 +1,5 @@
 import type { AgentEntry } from "./agents.js";
+import { getHlWallet } from "./agents.js";
 import { createAcpClient, jobPerpTradeOpenFull } from "./acp.js";
 import { fetchOpenHlCoins } from "./hyperliquidPositions.js";
 import { resolveWalletAddress } from "./wallet-resolve.js";
@@ -96,7 +97,8 @@ export async function executeSignalAutoTrade(
 
     try {
       const client = createAcpClient(agent.apiKey);
-      const data = await jobPerpTradeOpenFull(client, { ...req });
+      const hlUser = getHlWallet(agent);
+      const data = await jobPerpTradeOpenFull(client, { ...req }, hlUser);
       const jobId = extractJobId(data);
       lastOpenByAgentPair.set(key, Date.now());
       const pair = String(req.pair ?? "?");

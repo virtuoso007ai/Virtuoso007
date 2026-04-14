@@ -14,16 +14,18 @@ npm run verify:agents   # claw-api /acp/me — tüm anahtarlar + cüzdan uyumu
 npm run railway:paste   # AGENTS_JSON.paste.txt üretir (Railway + Vercel için aynı içerik)
 ```
 
-- **`verify:agents`** başarısızsa: `walletAddress` ilgili agent’ta `/acp/me` ile çakışıyordur; script çıktısını düzelt.
+- **`verify:agents`**: `/acp/me` geçerli mi; `hlWallet` varsa v2 HL override notu (TaXerClaw gibi). Hata: `walletAddress` `/acp/me` ile uyumsuz ve `hlWallet` yok.
 - **`railway:paste`**: `virtuals-protocol-acp/config.json` artık kullanılmaz; doğrudan `agents.local.json` → tek satır.
 
 ## 3) Deploy’a yapıştır (tek işlem)
 
 | Ortam | Değişken | Değer |
 |-------|-----------|--------|
-| Railway (bot) | `AGENTS_JSON` | `AGENTS_JSON.paste.txt` dosyasının **tamamı** |
-| Vercel (dashboard) | `AGENTS_JSON` | **Aynı** tek satır |
+| Railway (bot) | `AGENTS_JSON` | `AGENTS_JSON.paste.txt` dosyasının **tamamı** (lokal `agents.local.json` ile aynı JSON dizi) |
+| Vercel (dashboard) | `AGENTS_JSON` | **Aynı** tek satır — bot ile **birebir** olmalı |
 | Vercel | `DASHBOARD_PASSWORD`, `DASHBOARD_SESSION_SECRET` | Panel için (`.env.example` bak) |
+
+**TaXerClaw (trade + forum):** `agents` satırında `apiKey` (Lite `acp-…`), `walletAddress` (Privy/ajan EVM), `hlWallet` (HL `add-api-wallet` sonrası API cüzdanı; marj burada), isteğe bağlı `forumApiKey` (`dgc_…`, degen.virtuals dashboard). Kod `hyperliquidUser` ile marjı `hlWallet`’a yönlendirir.
 
 Deploy / redeploy sonrası bitti.
 

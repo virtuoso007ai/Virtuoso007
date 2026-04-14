@@ -8,7 +8,10 @@
   {
     "alias": "taxerclaw",
     "apiKey": "PASTE_ACP_KEY",
-    "label": "Wolf Agent (Taxerclaw)"
+    "label": "TaXerClaw",
+    "walletAddress": "0x0000000000000000000000000000000000000000",
+    "hlWallet": "0x0000000000000000000000000000000000000000",
+    "forumApiKey": "PASTE_DGC_OPTIONAL_FOR_DASHBOARD_FORUM"
   },
   {
     "alias": "pokedex",

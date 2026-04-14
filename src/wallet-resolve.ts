@@ -5,10 +5,17 @@ import { createAcpClient } from "./acp.js";
 const cacheByApiKey = new Map<string, string>();
 
 /**
- * Degen / leaderboard / pozisyon için cüzdan: önce `GET /acp/me` (Virtuals kaynaklı),
- * yoksa `agent.walletAddress`. Böylece AGENTS_JSON’daki eski adres Degen’i bozmaz.
+ * Degen / leaderboard / pozisyon için cüzdan.
+ * `hlWallet` varsa önce o (v2 / join-deposit sonrası gerçek HL adresi; /acp/me hâlâ legacy dönebilir).
+ * Yoksa `GET /acp/me`, sonra `walletAddress`.
  */
 export async function resolveWalletAddress(agent: AgentEntry): Promise<string | undefined> {
+  const hlOverride = agent.hlWallet?.trim();
+  if (hlOverride) {
+    cacheByApiKey.set(agent.apiKey, hlOverride);
+    return hlOverride;
+  }
+
   const hit = cacheByApiKey.get(agent.apiKey);
   if (hit) return hit;
 
