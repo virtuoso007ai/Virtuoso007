@@ -6,10 +6,14 @@
   Önkoşul: GitHub’da iki BOŞ repo oluştur (README ekleme): örn. USER/telegram-degen-bot, USER/degen-dashboard
   Kimlik: git credential manager veya SSH (remote URL’yi ssh formunda ver)
 
+  Varsayılan Virtuoso007 repoları:
+    Telegram:  https://github.com/virtuoso007ai/Virtuoso007
+    Dashboard: https://github.com/virtuoso007ai/degen-dashboard
+
   Kullanım:
     .\scripts\push-telegram-dashboard-github.ps1 `
-      -TelegramRemote "https://github.com/KULLANICI/telegram-degen-bot.git" `
-      -DashboardRemote "https://github.com/KULLANICI/degen-dashboard.git"
+      -TelegramRemote "https://github.com/virtuoso007ai/Virtuoso007.git" `
+      -DashboardRemote "https://github.com/virtuoso007ai/degen-dashboard.git"
 #>
 param(
   [Parameter(Mandatory = $true)][string]$TelegramRemote,
