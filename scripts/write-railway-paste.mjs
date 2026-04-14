@@ -8,10 +8,10 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
-const script = path.join(__dirname, "sync-agents-from-acp.mjs");
+const script = path.join(__dirname, "agents-local-to-oneline.mjs");
 const outFile = path.join(root, "AGENTS_JSON.paste.txt");
 
-const r = spawnSync(process.execPath, [script, "--one-line"], {
+const r = spawnSync(process.execPath, [script], {
   cwd: root,
   encoding: "utf8",
 });

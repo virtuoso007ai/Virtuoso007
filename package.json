@@ -9,7 +9,9 @@
     "dev": "tsx watch src/index.ts",
     "sync:agents": "node scripts/sync-agents-from-acp.mjs",
     "sync:agents:railway": "node scripts/sync-agents-from-acp.mjs --one-line",
-    "railway:paste": "node scripts/write-railway-paste.mjs"
+    "railway:paste": "node scripts/write-railway-paste.mjs",
+    "verify:agents": "node scripts/verify-agents-acp.mjs",
+    "agents:oneline": "node scripts/agents-local-to-oneline.mjs"
   },
   "dependencies": {
     "axios": "^1.13.5",

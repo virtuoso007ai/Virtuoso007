@@ -1,8 +1,8 @@
 import axios from "axios";
 
-/** Açık limit emirleri — dashboard ile aynı varsayılan (testnet). `HYPERLIQUID_INFO_URL` ile mainnet geçilebilir. */
+/** Açık limit emirleri — mainnet varsayılan. `HYPERLIQUID_INFO_URL` ile testnet geçilebilir. */
 export const DEFAULT_HL_INFO_URL =
-  process.env.HYPERLIQUID_INFO_URL?.trim() || "https://api.hyperliquid-testnet.xyz/info";
+  process.env.HYPERLIQUID_INFO_URL?.trim() || "https://api.hyperliquid.xyz/info";
 
 export type HlOpenOrderRow = {
   coin: string;
@@ -20,7 +20,7 @@ export async function fetchHyperliquidOpenOrders(
   try {
     const { data } = await axios.post<HlOpenOrderRow[]>(
       DEFAULT_HL_INFO_URL,
-      { type: "openOrders", user: wallet.trim() },
+      { type: "openOrders", user: wallet },
       { timeout: 30_000 }
     );
     return Array.isArray(data) ? data : [];

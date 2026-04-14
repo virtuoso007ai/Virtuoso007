@@ -1,8 +1,9 @@
 node_modules/
-dist/
 .env
 .env.local
 agents.local.json
 agents.manual.json
 AGENTS_JSON.paste.txt
+AGENTS_JSON_FULL_WITH_HL.paste.txt
+AGENTS_HL_WALLETS.json
 *.log
