@@ -1,6 +1,6 @@
 # Telegram Degen Claw bot (Virtuoso007 orkestra)
 
-Birden fazla ACP agent’ı için Telegram’dan `perp_trade` (aç/kapa) ve `perp_modify` gönderir.
+Birden fazla agent için Telegram’dan **Hyperliquid doğrudan** (HL v2) perp aç/kapa/modify/limit iptal. ACP `perp_trade` job kullanılmaz; `apiKey` yine `/positions` vb. için claw-api’de kullanılabilir.
 
 ## Proje analizi (bu workspace)
 

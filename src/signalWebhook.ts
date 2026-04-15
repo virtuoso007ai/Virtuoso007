@@ -1,6 +1,5 @@
 import type { AgentEntry } from "./agents.js";
-import { getHlWallet } from "./agents.js";
-import { createAcpClient, jobPerpTradeOpenFull } from "./acp.js";
+import { hlDirectOpen } from "./hlDirectTrade.js";
 import { fetchOpenHlCoins } from "./hyperliquidPositions.js";
 import { resolveWalletAddress } from "./wallet-resolve.js";
 
@@ -24,18 +23,14 @@ function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-function extractJobId(data: unknown): string | number {
-  if (data && typeof data === "object") {
-    const d = data as { data?: { jobId?: number }; jobId?: number };
-    const id = d.data?.jobId ?? d.jobId;
-    if (id != null) return id;
-  }
-  return "?";
+function extractSummary(data: unknown): string {
+  const s = JSON.stringify(data);
+  return s.length > 200 ? `${s.slice(0, 200)}…` : s;
 }
 
 /**
  * signal-bot `dispatchTradeSignal` JSON’u: `telegram.js` payload v2 + `degenClaw.serviceRequirements`.
- * Her uygun agent için ACP perp_trade (limit+TP+SL) — signal-bot’taki `runAutoTradeOnSignal` ile aynı mantık.
+ * HL v2: doğrudan Hyperliquid (ACP job yok). `size` = USDC notional (sayı).
  */
 export async function executeSignalAutoTrade(
   agents: Map<string, AgentEntry>,
@@ -56,6 +51,20 @@ export async function executeSignalAutoTrade(
   if (!hlCoin) {
     return { ok: false, lines: ["hlCoin zorunlu"] };
   }
+
+  const side = req.side === "short" ? "short" : "long";
+  const sizeUsd = Number.parseFloat(String(req.size ?? ""));
+  if (!Number.isFinite(sizeUsd) || sizeUsd <= 0) {
+    return { ok: false, lines: ["serviceRequirements.size USDC notional olmalı (pozitif sayı)"] };
+  }
+  const leverage = Number.parseInt(String(req.leverage ?? "5"), 10);
+  const lev = Number.isFinite(leverage) && leverage >= 1 ? leverage : 5;
+  const pair = String(req.pair ?? hlCoin).toUpperCase();
+  const stopLoss = req.stopLoss != null ? String(req.stopLoss).trim() : undefined;
+  const takeProfit = req.takeProfit != null ? String(req.takeProfit).trim() : undefined;
+  const orderType = req.orderType === "limit" ? "limit" : "market";
+  const limitPrice =
+    orderType === "limit" && req.limitPrice != null ? String(req.limitPrice).trim() : undefined;
 
   for (const agent of agents.values()) {
     if (!isAgentAutoTradeEnabled(agent)) {
@@ -96,19 +105,23 @@ export async function executeSignalAutoTrade(
     }
 
     try {
-      const client = createAcpClient(agent.apiKey);
-      const hlUser = getHlWallet(agent);
-      const data = await jobPerpTradeOpenFull(client, { ...req }, hlUser);
-      const jobId = extractJobId(data);
+      const data = await hlDirectOpen(agent, {
+        pair,
+        side,
+        sizeUsd,
+        leverage: lev,
+        stopLoss: stopLoss || undefined,
+        takeProfit: takeProfit || undefined,
+        orderType,
+        limitPrice,
+      });
       lastOpenByAgentPair.set(key, Date.now());
-      const pair = String(req.pair ?? "?");
-      const side = String(req.side ?? "?");
-      lines.push(`[${agent.alias}] ${pair} ${side} job #${jobId}`);
+      lines.push(`[${agent.alias}] ${pair} ${side} HL v2: ${extractSummary(data)}`);
     } catch (e) {
-      lines.push(`[${agent.alias}] ACP hata: ${errMsg(e)}`);
+      lines.push(`[${agent.alias}] HL v2 hata: ${errMsg(e)}`);
     }
   }
 
-  const ok = lines.some((l) => l.includes("job #"));
+  const ok = lines.some((l) => l.includes("HL v2:"));
   return { ok, lines };
 }

@@ -14,9 +14,11 @@
     "agents:oneline": "node scripts/agents-local-to-oneline.mjs"
   },
   "dependencies": {
+    "@nktkas/hyperliquid": "^0.32.2",
     "axios": "^1.13.5",
     "dotenv": "^16.4.5",
-    "telegraf": "^4.16.3"
+    "telegraf": "^4.16.3",
+    "viem": "^2.21.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

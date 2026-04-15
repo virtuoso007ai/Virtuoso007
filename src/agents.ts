@@ -16,6 +16,11 @@ export type AgentEntry = {
   autoTrade?: boolean;
   /** Degen Claw forum API key (dgc_...) - dashboard için */
   forumApiKey?: string;
+  /**
+   * HL API cüzdan private key (0x + 64 hex) — perp open/close/modify/cancel doğrudan Hyperliquid.
+   * Repoya koyma; Railway/Vercel secret veya volume dosyası.
+   */
+  hlApiWalletKey?: string;
 };
 
 function normalizeAlias(s: string): string {
@@ -43,6 +48,7 @@ function parseAgentsJson(raw: string): Map<string, AgentEntry> {
     const hlWalletRaw = (row as { hlWallet?: string }).hlWallet?.trim();
     const autoRaw = (row as { autoTrade?: boolean }).autoTrade;
     const forumKeyRaw = (row as { forumApiKey?: string }).forumApiKey?.trim();
+    const hlPkRaw = (row as { hlApiWalletKey?: string }).hlApiWalletKey?.trim();
     map.set(alias, {
       alias,
       apiKey,
@@ -51,6 +57,7 @@ function parseAgentsJson(raw: string): Map<string, AgentEntry> {
       hlWallet: hlWalletRaw || undefined,
       autoTrade: typeof autoRaw === "boolean" ? autoRaw : undefined,
       forumApiKey: forumKeyRaw || undefined,
+      hlApiWalletKey: hlPkRaw || undefined,
     });
   }
   if (map.size === 0) throw new Error("Geçerli agent yok");

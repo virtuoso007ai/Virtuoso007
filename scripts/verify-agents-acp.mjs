@@ -32,6 +32,14 @@ function sameAddr(a, b) {
   return String(a).toLowerCase() === String(b).toLowerCase();
 }
 
+function warnHlV2Key(alias, row) {
+  if (!String(row.hlApiWalletKey ?? "").trim()) {
+    console.warn(
+      `[${alias}] UYARI: hlApiWalletKey yok — Telegram /open /close (HL v2) bu agent için çalışmaz.`
+    );
+  }
+}
+
 async function main() {
   const list = loadAgents();
   if (!Array.isArray(list) || list.length === 0) {
@@ -78,16 +86,30 @@ async function main() {
         continue;
       }
 
+      const expectHl = row.hlWallet?.trim();
+      if (expectHl) {
+        if (!sameAddr(w, expectHl)) {
+          console.log(
+            `[${alias}] OK  api=/acp/me:${w}  hlWallet:${expectHl} (bot Degen için hlWallet kullanır)`
+          );
+        } else {
+          console.log(`[${alias}] OK  wallet=${w}`);
+        }
+        warnHlV2Key(alias, row);
+        continue;
+      }
+
       if (expectWallet && !sameAddr(w, expectWallet)) {
         console.error(
           `[${alias}] UYUMSUZLUK: /acp/me=${w} — AGENTS_JSON walletAddress=${expectWallet}\n` +
-            `  → agents.local.json içinde walletAddress'i /acp/me ile eşleştir veya kaldır (bot /acp/me kullanır).`
+            `  → eşleştir veya v2 HL için "hlWallet" alanı ekle.`
         );
         errors++;
         continue;
       }
 
       console.log(`[${alias}] OK  wallet=${w}`);
+      warnHlV2Key(alias, row);
     } catch (e) {
       console.error(`[${alias}] ${e instanceof Error ? e.message : e}`);
       errors++;

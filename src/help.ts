@@ -1,14 +1,16 @@
-export const HELP = `Degen Claw — komutlar (/agents ile alias dogrula)
+export const HELP = `Degen Claw — HL v2 (Hyperliquid dogrudan; ACP perp_trade job YOK)
+Her agent: AGENTS_JSON icinde hlApiWalletKey (API private key) + walletAddress (master) zorunlu.
+/open ... <USDC> = USDC notional (dgclaw trade.ts ile ayni; coin adedi DEGIL).
 
 Tek agent:
-/open <alias> <PAIR> <long|short> <size> [kaldirac] [SL] [TP] [orderType] [limitPrice]
+/open <alias> <PAIR> <long|short> <USDC> [kaldirac] [SL] [TP] [orderType] [limitPrice]
 /close <alias> <PAIR>
 /cancel <alias> <PAIR> [oid]
 /modify <alias> <PAIR> [SL] [TP] [leverage]
 
 Multi-agent (virgülle ayrılmış alias veya "all"):
-/openmulti <alias1,alias2,...> <PAIR> <long|short> <size> [kaldirac] [SL] [TP] [orderType] [limitPrice]
-/openall <PAIR> <long|short> <size> [kaldirac] [SL] [TP] [orderType] [limitPrice]
+/openmulti <alias1,alias2,...> <PAIR> <long|short> <USDC> [kaldirac] [SL] [TP] [orderType] [limitPrice]
+/openall <PAIR> <long|short> <USDC> [kaldirac] [SL] [TP] [orderType] [limitPrice]
 /closemulti <alias1,alias2,...> <PAIR>
 /closeall <PAIR>
 /cancelmulti <alias1,alias2,...> <PAIR>
@@ -33,9 +35,9 @@ Strategy types:
 - rsi_divergence
 
 Ornek:
-/open raichu ETH long 50 10 → market
-/open raichu ETH long 50 10 2000 2200 → TP/SL
-/open raichu ETH long 50 10 2000 2200 limit 2100 → limit
+/open taxerclaw VIRTUAL long 25 5 → ~25 USDC notional, 5x
+/open raichu ETH long 500 10 2000 2200 → TP/SL (fiyat seviyesi)
+/open raichu ETH long 500 10 - - limit 2100 → limit (SL/TP yok: - -)
 /cancel taxerclaw ENA 377198646148 → tek limit (oid)
 /cancel taxerclaw ENA → paritedeki tüm limitler (HL taraması)
 /openmulti raichu,friday,venom BTC long 50 10
