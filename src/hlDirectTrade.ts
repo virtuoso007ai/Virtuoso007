@@ -100,7 +100,23 @@ export type HlDirectOpenParams = {
   limitPrice?: string;
 };
 
+function assertHlTriggerPx(label: string, v: string | undefined): void {
+  if (!v?.trim()) return;
+  const s = v.trim();
+  if (!/^[0-9]+(\.[0-9]+)?$/.test(s)) {
+    throw new Error(
+      `${label} geçersiz: "${v}" — tetik fiyatı pozitif sayı olmalı. "market" buraya yazılmaz; Telegram: /open alias COIN long USDC kaldıraç market (SL alanına market kısayolu) veya SL/TP yoksa sadece /open ... 5`
+    );
+  }
+}
+
 export async function hlDirectOpen(agent: AgentEntry, p: HlDirectOpenParams): Promise<unknown> {
+  assertHlTriggerPx("Stop loss", p.stopLoss);
+  assertHlTriggerPx("Take profit", p.takeProfit);
+  if (p.orderType === "limit" && p.limitPrice?.trim()) {
+    assertHlTriggerPx("Limit fiyat", p.limitPrice);
+  }
+
   const { exchange, info } = createClients(agent);
   const pair = p.pair.toUpperCase();
   const { index: assetId, meta } = await getAssetIndex(info, pair);

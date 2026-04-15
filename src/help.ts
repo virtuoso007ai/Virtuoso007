@@ -36,7 +36,9 @@ Strategy types:
 - rsi_divergence
 
 Ornek:
-/open taxerclaw VIRTUAL long 25 5 → ~25 USDC notional, 5x
+/open taxerclaw VIRTUAL long 25 5 → ~25 USDC notional, 5x (market)
+/open taxerclaw VIRTUAL long 25 5 market → ayni (market kisayolu; SL alanina yazilir)
+/open taxerclaw VIRTUAL long 25 5 limit 0.68 → limit (kisayol)
 /open raichu ETH long 500 10 2000 2200 → TP/SL (fiyat seviyesi)
 /open raichu ETH long 500 10 - - limit 2100 → limit (SL/TP yok: - -)
 /cancel taxerclaw ENA 377198646148 → tek limit (oid)

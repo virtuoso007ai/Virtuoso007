@@ -39,6 +39,59 @@ function commandRest(ctx: Context): string[] {
   return t.trim().split(/\s+/).slice(1);
 }
 
+/** HL tetik / limit fiyatı (pozitif ondalık). */
+const OPEN_PRICE_RE = /^[0-9]+(\.[0-9]+)?$/;
+
+/**
+ * /open ... [SL] [TP] [orderType] [limitPrice] — SL alanına yazılan `market` / `limit`
+ * çoğu kullanıcıda emir tipi kısayolu (Hyperliquid'e SL fiyatı gitmesin).
+ */
+function normalizeOpenExtras(args: {
+  slRaw?: string;
+  tpRaw?: string;
+  orderTypeRaw?: string;
+  limitPriceRaw?: string;
+}): {
+  stopLoss?: string;
+  takeProfit?: string;
+  orderType: "market" | "limit";
+  limitPrice?: string;
+} {
+  const { slRaw, tpRaw, orderTypeRaw, limitPriceRaw } = args;
+  const slTrim = slRaw?.trim();
+  const slLower = slTrim?.toLowerCase();
+  const otExisting = orderTypeRaw?.trim().toLowerCase();
+
+  if (slLower === "market" && !otExisting) {
+    return {
+      stopLoss: undefined,
+      takeProfit: tpRaw && tpRaw !== "-" ? tpRaw.trim() : undefined,
+      orderType: "market",
+      limitPrice: limitPriceRaw?.trim() || undefined,
+    };
+  }
+
+  if (slLower === "limit" && tpRaw?.trim() && tpRaw !== "-" && !otExisting) {
+    const p = tpRaw.trim();
+    if (OPEN_PRICE_RE.test(p)) {
+      return {
+        stopLoss: undefined,
+        takeProfit: undefined,
+        orderType: "limit",
+        limitPrice: p,
+      };
+    }
+  }
+
+  const stopLoss = slTrim && slTrim !== "-" ? slTrim : undefined;
+  const takeProfit = tpRaw && tpRaw !== "-" ? tpRaw.trim() : undefined;
+  const orderType = otExisting === "limit" ? "limit" : "market";
+  const limitPrice =
+    orderType === "limit" && limitPriceRaw?.trim() ? limitPriceRaw.trim() : undefined;
+
+  return { stopLoss, takeProfit, orderType, limitPrice };
+}
+
 function errText(e: unknown): string {
   if (axios.isAxiosError(e) && e.response?.data != null) {
     return typeof e.response.data === "string"
@@ -430,7 +483,10 @@ export function registerBot(
     if (!pair || (side !== "long" && side !== "short") || !sizeRaw) {
       await ctx.reply(
         "Kullanım: /open <alias> <PAIR> <long|short> <USDC> [kaldıraç] [SL] [TP] [orderType] [limitPrice]\n" +
-          "<USDC> = USDC notional (HL v2; örn. 25 ≈ 25$)\nÖrnek: /open taxerclaw VIRTUAL long 25 5\nLimit: /open taxerclaw VIRTUAL long 25 5 - - limit 0.68"
+          "<USDC> = USDC notional (HL v2; örn. 25 ≈ 25$)\n" +
+          "Market (varsayılan): /open taxerclaw VIRTUAL long 25 5\n" +
+          "Kısayol: /open taxerclaw VIRTUAL long 25 5 market\n" +
+          "Limit: /open taxerclaw VIRTUAL long 25 5 limit 0.68  veya  /open ... 25 5 - - limit 0.68"
       );
       return;
     }
@@ -440,10 +496,12 @@ export function registerBot(
       return;
     }
 
-    const stopLoss = slRaw && slRaw !== "-" ? slRaw : undefined;
-    const takeProfit = tpRaw && tpRaw !== "-" ? tpRaw : undefined;
-    const orderType = orderTypeRaw === "limit" ? "limit" : "market";
-    const limitPrice = orderType === "limit" && limitPriceRaw ? limitPriceRaw : undefined;
+    const { stopLoss, takeProfit, orderType, limitPrice } = normalizeOpenExtras({
+      slRaw,
+      tpRaw,
+      orderTypeRaw,
+      limitPriceRaw,
+    });
 
     const sizeUsd = Number.parseFloat(sizeRaw);
     if (!Number.isFinite(sizeUsd) || sizeUsd <= 0) {
@@ -693,10 +751,12 @@ export function registerBot(
       return;
     }
 
-    const stopLoss = slRaw && slRaw !== "-" ? slRaw : undefined;
-    const takeProfit = tpRaw && tpRaw !== "-" ? tpRaw : undefined;
-    const orderType = orderTypeRaw === "limit" ? "limit" : "market";
-    const limitPrice = orderType === "limit" && limitPriceRaw ? limitPriceRaw : undefined;
+    const { stopLoss, takeProfit, orderType, limitPrice } = normalizeOpenExtras({
+      slRaw,
+      tpRaw,
+      orderTypeRaw,
+      limitPriceRaw,
+    });
 
     const sizeUsd = Number.parseFloat(sizeRaw);
     if (!Number.isFinite(sizeUsd) || sizeUsd <= 0) {
@@ -705,7 +765,7 @@ export function registerBot(
     }
 
     await ctx.reply(
-      `🔄 ${aliasesList.length} agent için HL v2:\n${aliasesList.join(", ")}\n${pair} ${side} ~$${sizeUsd} ${leverage}x${stopLoss ? ` SL:${stopLoss}` : ""}${takeProfit ? ` TP:${takeProfit}` : ""}…`
+      `🔄 ${aliasesList.length} agent için HL v2:\n${aliasesList.join(", ")}\n${pair} ${side} ~$${sizeUsd} ${leverage}x${stopLoss ? ` SL:${stopLoss}` : ""}${takeProfit ? ` TP:${takeProfit}` : ""}${orderType === "limit" ? ` [LMT ${limitPrice}]` : ""}…`
     );
 
     const results: string[] = [];
@@ -761,10 +821,12 @@ export function registerBot(
       return;
     }
 
-    const stopLoss = slRaw && slRaw !== "-" ? slRaw : undefined;
-    const takeProfit = tpRaw && tpRaw !== "-" ? tpRaw : undefined;
-    const orderType = orderTypeRaw === "limit" ? "limit" : "market";
-    const limitPrice = orderType === "limit" && limitPriceRaw ? limitPriceRaw : undefined;
+    const { stopLoss, takeProfit, orderType, limitPrice } = normalizeOpenExtras({
+      slRaw,
+      tpRaw,
+      orderTypeRaw,
+      limitPriceRaw,
+    });
 
     const sizeUsdAll = Number.parseFloat(sizeRaw);
     if (!Number.isFinite(sizeUsdAll) || sizeUsdAll <= 0) {
@@ -773,7 +835,7 @@ export function registerBot(
     }
 
     await ctx.reply(
-      `🔄 TÜM agentlara HL v2 (${aliasesList.length} agent):\n${pair} ${side} ~$${sizeUsdAll} ${leverage}x${stopLoss ? ` SL:${stopLoss}` : ""}${takeProfit ? ` TP:${takeProfit}` : ""}…`
+      `🔄 TÜM agentlara HL v2 (${aliasesList.length} agent):\n${pair} ${side} ~$${sizeUsdAll} ${leverage}x${stopLoss ? ` SL:${stopLoss}` : ""}${takeProfit ? ` TP:${takeProfit}` : ""}${orderType === "limit" ? ` [LMT ${limitPrice}]` : ""}…`
     );
 
     const results: string[] = [];
