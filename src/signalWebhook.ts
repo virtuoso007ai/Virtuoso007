@@ -87,7 +87,7 @@ export async function executeSignalAutoTrade(
       continue;
     }
     if (!wallet) {
-      lines.push(`[${agent.alias}] cüzdan yok — AGENTS_JSON walletAddress veya ACP key`);
+      lines.push(`[${agent.alias}] cüzdan yok — hlWallet / walletAddress veya apiKey (/acp/me)`);
       continue;
     }
 

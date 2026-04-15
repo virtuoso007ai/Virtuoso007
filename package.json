@@ -11,7 +11,14 @@
     "sync:agents:railway": "node scripts/sync-agents-from-acp.mjs --one-line",
     "railway:paste": "node scripts/write-railway-paste.mjs",
     "verify:agents": "node scripts/verify-agents-acp.mjs",
-    "agents:oneline": "node scripts/agents-local-to-oneline.mjs"
+    "agents:oneline": "node scripts/agents-local-to-oneline.mjs",
+    "agents:paste-file": "node scripts/agents-local-to-oneline.mjs --out=AGENTS_JSON.paste.txt",
+    "hl:sync-api-keys": "node scripts/sync-hl-api-keys.mjs",
+    "hl:bootstrap-hl-secrets": "node scripts/sync-hl-api-keys.mjs --bootstrap",
+    "hl:sync-keys-from-env-files": "node scripts/sync-hl-api-keys.mjs",
+    "hl:diagnose": "node scripts/hl-diagnose-user.mjs",
+    "hl:close-pair": "tsx scripts/close-agent-pair-once.ts",
+    "hl:cancel-open-orders": "tsx scripts/cancel-agent-open-orders.ts"
   },
   "dependencies": {
     "@nktkas/hyperliquid": "^0.32.2",

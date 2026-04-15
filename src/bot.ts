@@ -255,7 +255,7 @@ export function registerBot(
     const wallet = await resolveWalletAddress(agent);
     if (!wallet) {
       await ctx.reply(
-        "<i>Cüzdan bulunamadı.</i> <code>apiKey</code> / <code>/acp/me</code> veya <code>walletAddress</code> kontrol et.",
+        "<i>Cüzdan bulunamadı.</i> <code>hlWallet</code> / <code>walletAddress</code> veya <code>apiKey</code> ile <code>/acp/me</code>.",
         { parse_mode: "HTML" }
       );
       return;
@@ -321,7 +321,7 @@ export function registerBot(
     const wallet = await resolveWalletAddress(agent);
     if (!wallet) {
       await ctx.reply(
-        "Cüzdan bulunamadı. apiKey ile /acp/me veya AGENTS_JSON’da walletAddress."
+        "Cüzdan bulunamadı. AGENTS_JSON’da hlWallet / walletAddress doldur veya apiKey ile /acp/me."
       );
       return;
     }
@@ -435,7 +435,9 @@ export function registerBot(
     if (stopLoss) msg += ` SL:${stopLoss}`;
     if (takeProfit) msg += ` TP:${takeProfit}`;
     if (orderType === "limit") msg += ` [Limit: ${limitPrice}]`;
-    await ctx.reply(msg + "…");
+    await ctx.reply(
+      `${msg}\n⏳ HL'ye gönderiliyor…\n(Bu mesaj henüz onay değil; sonuç bir sonraki mesajda.)`
+    );
 
     try {
       const data = await hlDirectOpen(agent, {
@@ -469,7 +471,9 @@ export function registerBot(
       return;
     }
 
-    await ctx.reply(`Kapatma job: ${agent.alias} ${pair}…`);
+    await ctx.reply(
+      `HL v2 kapatma: ${agent.alias} ${pair}…\n⏳ Gönderiliyor… (Sonuç bir sonraki mesajda.)`
+    );
 
     try {
       const data = await hlDirectClose(agent, pair);

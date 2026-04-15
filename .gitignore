@@ -1,6 +1,8 @@
 node_modules/
 .env
 .env.local
+# HL API imza anahtarlari — tek dosya (ornek: secrets/hl-api-wallets.env.example)
+secrets/hl-api-wallets.env
 agents.local.json
 agents.manual.json
 AGENTS_JSON.paste.txt

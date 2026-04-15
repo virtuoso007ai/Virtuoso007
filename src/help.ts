@@ -1,5 +1,6 @@
 export const HELP = `Degen Claw — HL v2 (Hyperliquid dogrudan; ACP perp_trade job YOK)
-Her agent: AGENTS_JSON icinde hlApiWalletKey (API private key) + walletAddress (master) zorunlu.
+HL imza anahtari: AGENTS_JSON hlApiWalletKey VEYA env HL_API_WALLET_KEY_<ALIAS>. Master: walletAddress veya HL_MASTER_ADDRESS_*.
+ACP apiKey (acp-...) opsiyonel — sadece /acp/me ile cüzdan çözmek için; HL islemi icin sart degil.
 /open ... <USDC> = USDC notional (dgclaw trade.ts ile ayni; coin adedi DEGIL).
 
 Tek agent:
@@ -8,7 +9,7 @@ Tek agent:
 /cancel <alias> <PAIR> [oid]
 /modify <alias> <PAIR> [SL] [TP] [leverage]
 
-Multi-agent (virgülle ayrılmış alias veya "all"):
+Multi-agent (dashboard "Tüm agentlara aynı emir" ile ayni mantik; her agent kendi hlApiWalletKey ile imzalar):
 /openmulti <alias1,alias2,...> <PAIR> <long|short> <USDC> [kaldirac] [SL] [TP] [orderType] [limitPrice]
 /openall <PAIR> <long|short> <USDC> [kaldirac] [SL] [TP] [orderType] [limitPrice]
 /closemulti <alias1,alias2,...> <PAIR>

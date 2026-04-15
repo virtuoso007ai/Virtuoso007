@@ -33,7 +33,9 @@ function masterAddress(agent: AgentEntry): `0x${string}` {
   const m = agent.walletAddress?.trim();
   if (!m || !/^0x[0-9a-fA-F]{40}$/i.test(m)) {
     throw new Error(
-      "HL v2: walletAddress (master Privy adresi) AGENTS_JSON'da zorunlu — /acp/me ile aynı olmalı."
+      "HL v2: walletAddress (master) yok — AGENTS_JSON veya HL_MASTER_ADDRESS_" +
+        agent.alias.replace(/[^a-z0-9]/gi, "").toUpperCase() +
+        " / tek agent HL_MASTER_ADDRESS (dgclaw trade.ts)."
     );
   }
   return m as `0x${string}`;
@@ -42,7 +44,9 @@ function masterAddress(agent: AgentEntry): `0x${string}` {
 export function assertHlDirectAgent(agent: AgentEntry): void {
   if (!agent.hlApiWalletKey?.trim()) {
     throw new Error(
-      "HL v2: bu agent için AGENTS_JSON içinde hlApiWalletKey yok (add-api-wallet çıktısı; repoya commit etme)."
+      "HL v2: hlApiWalletKey yok — AGENTS_JSON'a ekleyin veya Railway/Vercel'de HL_API_WALLET_KEY_" +
+        agent.alias.replace(/[^a-z0-9]/gi, "").toUpperCase() +
+        " (dgclaw trade.ts ile aynı; tek agent ise HL_API_WALLET_KEY)."
     );
   }
   masterAddress(agent);
@@ -331,4 +335,45 @@ export async function hlDirectCancelLimit(
   const { exchange, info } = createClients(agent);
   const { index: assetId } = await getAssetIndex(info, pair.toUpperCase());
   return exchange.cancel({ cancels: [{ a: assetId, o: oid }] });
+}
+
+/** Perp `openOrders` içinde bu pariteye düşen tüm emirleri `exchange.cancel` ile iptal eder (limit + trigger). */
+export async function hlDirectCancelAllOpenOrdersForPair(
+  agent: AgentEntry,
+  pairRaw: string
+): Promise<{ cancelled: number; oids: number[]; errors: string[] }> {
+  const { exchange, info, master } = createClients(agent);
+  const base = pairRaw.toUpperCase().replace(/-USD$/i, "").trim();
+  const orders = await info.openOrders({ user: master });
+  const list = Array.isArray(orders) ? orders : [];
+  const hits = list.filter((o: { coin?: string }) => {
+    const c = String(o.coin ?? "").toUpperCase();
+    const sym = c.includes("-") ? c.split("-")[0] : c.includes("/") ? c.split("/")[0] : c;
+    return sym === base || c === `${base}-USD` || c.startsWith(`${base}-`);
+  });
+  const oids: number[] = [];
+  const errors: string[] = [];
+  for (const o of hits) {
+    const oid = typeof o.oid === "number" ? o.oid : Number(o.oid);
+    if (!Number.isFinite(oid)) {
+      errors.push(`oid okunamadi: ${JSON.stringify(o).slice(0, 80)}`);
+      continue;
+    }
+    const coinRaw = String(o.coin ?? "");
+    const perpSym = coinRaw.includes("-")
+      ? coinRaw.split("-")[0]
+      : coinRaw.includes("/")
+        ? coinRaw.split("/")[0]
+        : coinRaw;
+    try {
+      const { index: assetId } = await getAssetIndex(info, perpSym);
+      await exchange.cancel({ cancels: [{ a: assetId, o: oid }] });
+      oids.push(oid);
+    } catch (e) {
+      errors.push(
+        `oid ${oid} (${coinRaw}): ${e instanceof Error ? e.message : String(e)}`
+      );
+    }
+  }
+  return { cancelled: oids.length, oids, errors };
 }

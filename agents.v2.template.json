@@ -1,0 +1,12 @@
+[
+  {
+    "alias": "raichu",
+    "apiKey": "acp_REPLACE_WITH_LITE_KEY",
+    "label": "Optional",
+    "walletAddress": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "hlWallet": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "hlApiWalletKey": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "forumApiKey": "dgc_REPLACE_OR_OMIT",
+    "autoTrade": true
+  }
+]

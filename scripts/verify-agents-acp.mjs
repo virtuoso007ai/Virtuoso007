@@ -34,8 +34,14 @@ function sameAddr(a, b) {
 
 function warnHlV2Key(alias, row) {
   if (!String(row.hlApiWalletKey ?? "").trim()) {
+    const sfx = alias.replace(/[^a-z0-9]/gi, "").toUpperCase();
+    const fromEnv = process.env[`HL_API_WALLET_KEY_${sfx}`]?.trim();
     console.warn(
-      `[${alias}] UYARI: hlApiWalletKey yok — Telegram /open /close (HL v2) bu agent için çalışmaz.`
+      `[${alias}] UYARI: JSON'da hlApiWalletKey yok` +
+        (fromEnv ? " (process.env'de HL_API_WALLET_KEY_* var — Railway'de de tanımlayın)" : "") +
+        " — Telegram /open (HL v2) için JSON veya HL_API_WALLET_KEY_" +
+        sfx +
+        " gerekli."
     );
   }
 }
@@ -54,8 +60,8 @@ async function main() {
     const expectWallet = row.walletAddress?.trim();
 
     if (!apiKey) {
-      console.error(`[${alias}] apiKey yok`);
-      errors++;
+      console.warn(`[${alias}] apiKey yok — /acp/me atlandı (HL-only agent; walletAddress/hlWallet doğrula)`);
+      warnHlV2Key(alias, row);
       continue;
     }
 

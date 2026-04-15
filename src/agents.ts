@@ -1,11 +1,12 @@
 import * as fs from "fs";
 import * as path from "path";
+import { applyHlTradeEnvToAgent } from "./hlAgentSecretsFromEnv.js";
 
 export type AgentEntry = {
   /** Kısa ad: /open raichu ... */
   alias: string;
-  /** ACP LITE agent API key (acp-...) */
-  apiKey: string;
+  /** ACP LITE agent API key (acp-...) — HL-only agentlarda opsiyonel; /acp/me ile cüzdan çözmek için */
+  apiKey?: string;
   /** Opsiyonel görünen isim */
   label?: string;
   /** Degen Claw (HL) cüzdanı — /positions için */
@@ -42,7 +43,7 @@ function parseAgentsJson(raw: string): Map<string, AgentEntry> {
     if (!row || typeof row !== "object") continue;
     const alias = normalizeAlias(String((row as { alias?: string }).alias ?? ""));
     const apiKey = String((row as { apiKey?: string }).apiKey ?? "").trim();
-    if (!alias || !apiKey) continue;
+    if (!alias) continue;
     if (map.has(alias)) throw new Error(`Yinelenen alias: ${alias}`);
     const walletRaw = (row as { walletAddress?: string }).walletAddress?.trim();
     const hlWalletRaw = (row as { hlWallet?: string }).hlWallet?.trim();
@@ -51,7 +52,7 @@ function parseAgentsJson(raw: string): Map<string, AgentEntry> {
     const hlPkRaw = (row as { hlApiWalletKey?: string }).hlApiWalletKey?.trim();
     map.set(alias, {
       alias,
-      apiKey,
+      apiKey: apiKey || undefined,
       label: (row as { label?: string }).label?.trim(),
       walletAddress: walletRaw || undefined,
       hlWallet: hlWalletRaw || undefined,
@@ -61,6 +62,10 @@ function parseAgentsJson(raw: string): Map<string, AgentEntry> {
     });
   }
   if (map.size === 0) throw new Error("Geçerli agent yok");
+  const sole = map.size === 1;
+  for (const k of [...map.keys()]) {
+    map.set(k, applyHlTradeEnvToAgent(map.get(k)!, sole));
+  }
   return map;
 }
 
