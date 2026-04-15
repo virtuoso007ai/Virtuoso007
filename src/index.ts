@@ -147,33 +147,23 @@ async function launchBot() {
     console.warn("[telegram] deleteWebhook failed (non-fatal):", e);
   }
   
-  // Retry loop with increasing delays
-  const delays = [0, 10000, 20000, 30000, 60000]; // 0s, 10s, 20s, 30s, 60s
-  
-  for (let attempt = 0; attempt < delays.length; attempt++) {
-    if (delays[attempt] > 0) {
-      console.log(`[telegram] Retry ${attempt}/${delays.length - 1}: waiting ${delays[attempt] / 1000}s...`);
-      await new Promise(r => setTimeout(r, delays[attempt]));
-    }
-    
+  // Sonsuz yeniden deneme: Railway redeploy / çift instance 409'unda önceki kod 5 denemeden sonra
+  // sessizce çıkıyordu → komutlara hiç cevap gelmiyordu.
+  let attempt = 0;
+  while (true) {
     try {
-      console.log(`[telegram] Attempt ${attempt + 1}/${delays.length}: Starting long polling...`);
+      attempt++;
+      console.log(`[telegram] Long polling başlatılıyor (deneme ${attempt})…`);
       await bot.launch({ dropPendingUpdates: true });
       console.log("[telegram] ✅ Bot çalışıyor (long polling)");
-      return; // success!
+      return;
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      const is409 = errMsg.includes("409") || errMsg.includes("Conflict");
-      
-      if (is409 && attempt < delays.length - 1) {
-        console.warn(`[telegram] ⚠️ 409 Conflict on attempt ${attempt + 1}. Will retry...`);
-      } else {
-        console.error(`[telegram] ❌ Failed after ${attempt + 1} attempts:`, errMsg);
-        if (is409) {
-          console.error("[telegram] 💡 Bot commands disabled. Strategy scheduler continues.");
-        }
-        return; // Don't crash
-      }
+      const waitMs = Math.min(15_000 + attempt * 10_000, 120_000);
+      console.warn(
+        `[telegram] ⚠️ launch başarısız: ${errMsg.slice(0, 240)} — ${waitMs / 1000}s sonra tekrar…`
+      );
+      await new Promise((r) => setTimeout(r, waitMs));
     }
   }
 }

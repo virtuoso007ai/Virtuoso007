@@ -56,5 +56,6 @@ Liquidation: /liq <alias> | /liq all
 Pozlar: /positions <alias> | /positions all (/poz)
 Bakiye: /balance <alias> | /balance all (/bakiye)
 Leaderboard: /leaderboard | /leaderboard top (/lb)
-/ping — saglik`;
+/ping — saglik
+/myid — bu sohbetin Telegram ID'si (ALLOWED_CHAT_IDS ayari icin)`;
 

@@ -99,6 +99,11 @@ function parseAllowedChatIds(): Set<string> {
   );
 }
 
+/** /myid veya /myid@BotFatherAdı */
+function isMyIdCommand(text: string): boolean {
+  return /^\/myid(?:@\S*)?(?:\s|$)/i.test(text.trim());
+}
+
 function isAuthorized(chatId: number | undefined, allowed: Set<string>): boolean {
   if (!chatId) return false;
   if (allowed.size === 0) {
@@ -177,9 +182,24 @@ export function registerBot(
   const allowed = parseAllowedChatIds();
 
   bot.use(async (ctx, next) => {
+    const text = ctx.message && "text" in ctx.message ? String(ctx.message.text ?? "") : "";
+    if (isMyIdCommand(text)) {
+      const id = ctx.chat?.id;
+      const typ = ctx.chat?.type;
+      await ctx.reply(
+        `Bu sohbet kimliği: \`${id ?? "?"}\`\nTür: ${typ ?? "?"}\n\n` +
+          `Railway \`ALLOWED_CHAT_IDS\` tam olarak bu sayıyı içermeli (gruplarda genelde \`-100...\`).\n` +
+          `Komut: /myid`,
+        { parse_mode: "Markdown" }
+      );
+      return;
+    }
     const id = ctx.chat?.id;
     if (!isAuthorized(id, allowed)) {
-      await ctx.reply("Bu bot bu sohbet için yetkili değil.");
+      await ctx.reply(
+        "Bu bot bu sohbet için yetkili değil.\n" +
+          "Sohbet ID'ni görmek için: /myid — Railway ALLOWED_CHAT_IDS'e aynısını ekle."
+      );
       return;
     }
     return next();
