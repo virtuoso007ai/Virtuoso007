@@ -1,0 +1,99 @@
+===========================================
+COPY THIS PROMPT TO YOUR TRADING BOT
+===========================================
+
+I need you to integrate Degen Claw ACP API into this trading bot for perpetual futures trading.
+
+## Integration Requirements
+
+Implement 4 core trading functions for Degen Claw:
+
+### 1. openPosition()
+Open a perpetual futures position with TP/SL.
+
+**Parameters:**
+- pair: string (BTC, ETH, SOL, DOGE, PENGU, HYPE, PEPE, POPCAT)
+- side: "long" | "short"
+- size: number (minimum 11 USDC, recommended 15+)
+- leverage: number (1-50x, default 3)
+- tpPercent: number (e.g., 3.5 = 3.5% profit target)
+- slPercent: number (e.g., 2 = 2% stop loss)
+- currentPrice: number (current market price)
+
+**Logic:**
+1. Calculate TP and SL prices from percentages:
+   - If long: TP = price × (1 + tp/100), SL = price × (1 - sl/100)
+   - If short: TP = price × (1 - tp/100), SL = price × (1 + sl/100)
+2. Send POST request to: https://api.agdp.io/degen-acp/job
+3. Headers: { "Content-Type": "application/json", "Authorization": "Bearer <API_KEY>" }
+4. Body: { service: "perp_trade", action: "open", params: { pair, side, size, leverage, takeProfit, stopLoss } }
+
+### 2. closePosition()
+Close an existing position.
+
+**Parameters:**
+- pair: string
+- side: "long" | "short"
+
+**Logic:**
+- Same endpoint as open
+- Body: { service: "perp_trade", action: "close", params: { pair, side } }
+
+### 3. modifyPosition()
+Update leverage, TP, or SL on existing position.
+
+**Parameters:**
+- pair: string
+- side: "long" | "short"
+- leverage?: number (optional)
+- takeProfit?: string (optional, price as string)
+- stopLoss?: string (optional, price as string)
+
+**Logic:**
+- Same endpoint
+- Body: { service: "perp_modify", params: { pair, side, leverage?, takeProfit?, stopLoss? } }
+
+### 4. calculateTPSL()
+Helper function to calculate TP/SL prices from percentages.
+
+**Parameters:**
+- entryPrice: number
+- tpPercent: number
+- slPercent: number
+- side: "long" | "short"
+
+**Returns:** { takeProfit: string, stopLoss: string }
+
+## Environment Variable
+Add this to your .env file:
+```
+DEGEN_API_KEY=acp-YOUR_API_KEY_HERE
+```
+
+Get your API key from: https://degen.virtuals.io
+
+## Error Handling
+- Implement retry logic (3 attempts with 2s, 4s, 6s delays)
+- Handle errors: insufficient balance, position too small, invalid pair
+- Log all requests and responses
+
+## Testing
+After implementation, test:
+1. Open BTC long with TP=3.5%, SL=2%, size=50, leverage=5
+2. Close the position
+3. Open ETH short with TP=2%, SL=1.5%, size=30
+4. Modify leverage to 10x
+
+## Example Code
+See the attached `degen-claw-trader.js` file for a complete working implementation.
+
+## Success Criteria
+✅ Can open positions with automatic TP/SL calculation
+✅ Can close positions
+✅ Can modify existing positions (leverage, TP, SL)
+✅ Handles errors and retries automatically
+✅ Logs all trading operations
+
+Implement these functions now and confirm when done!
+
+===========================================

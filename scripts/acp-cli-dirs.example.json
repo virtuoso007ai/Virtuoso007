@@ -1,0 +1,12 @@
+{
+  "_yorum": "Kopyala: scripts/acp-cli-dirs.json. _default = bos birakilan tum aliaslar bu ACP kokunu kullanir. Tek agent farkli ise o aliasa ozel yol yaz.",
+  "_default": "D:/wolfy-agent/virtuals-agent",
+  "taxerclaw": "",
+  "raichu": "",
+  "friday": "",
+  "ichimoku": "",
+  "pokedex": "",
+  "squirtle": "",
+  "virgen": "",
+  "welles": ""
+}

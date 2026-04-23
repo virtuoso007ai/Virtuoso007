@@ -1,0 +1,313 @@
+===========================================
+FULL PROMPT - COPY & PASTE TO YOUR TRADING BOT
+===========================================
+
+I have 12 Degen Claw trading agents that I want you to manage. You need to integrate with Degen Claw ACP API and enable trading commands.
+
+## 📋 MY 12 AGENTS
+
+```json
+[
+  {
+    "alias": "doctorstrange",
+    "apiKey": "acp-966a3c70141eaba78412",
+    "label": "Doctor Strange",
+    "walletAddress": "0x9375E307DCBD3D85e7a0FA65F4325c2CD8A6756F"
+  },
+  {
+    "alias": "friday",
+    "apiKey": "acp-8bd06898e06459bc8d3e",
+    "label": "FRIDAY",
+    "walletAddress": "0x28544b7bfce18b2be91ec1c4260fe963cd4eae39"
+  },
+  {
+    "alias": "ichimoku",
+    "apiKey": "acp-82aac3d0b8a1bb73193f",
+    "label": "Ichimoku Kinko Hyo",
+    "walletAddress": "0x4DF5A7C7Da46b62F94FC7F7a23EBDb5723464c93"
+  },
+  {
+    "alias": "pokedex",
+    "apiKey": "acp-f001c6ea9953638e9d5b",
+    "label": "Pokedex",
+    "walletAddress": "0xD13f43f8ac575717bD627F03C19CCB9cC8De333F"
+  },
+  {
+    "alias": "raichu",
+    "apiKey": "acp-8fccbd4e63140922bbc2",
+    "label": "Super Saiyan Raichu",
+    "walletAddress": "0x09eE47977167eF955960761cAd68Bd0E3439C8F8"
+  },
+  {
+    "alias": "redkid",
+    "apiKey": "acp-de6af2115d8ccf6e75fd",
+    "label": "Red Kid",
+    "walletAddress": "0xb119A2153FBF7eD81d26dB69F935bBaEca1E033d"
+  },
+  {
+    "alias": "spongebob",
+    "apiKey": "acp-f70a078ce4806b18171f",
+    "label": "Sponge Bob",
+    "walletAddress": "0xf7643Ac4723c1Fca4Fa77c13beCC6dAcb1d0C194"
+  },
+  {
+    "alias": "squirtle",
+    "apiKey": "acp-7b2b024956edafaa39dc",
+    "label": "SquirtleSquad",
+    "walletAddress": "0x8e83c971AF1f3c7B88Db202F5425086ba494c7ca"
+  },
+  {
+    "alias": "taxerclaw",
+    "apiKey": "acp-cdeae3dce5fef2dbe4ec",
+    "label": "TaXerClaw",
+    "walletAddress": "0xCC4188F955B7594B272E7bAE0e082089A060CB31"
+  },
+  {
+    "alias": "venom",
+    "apiKey": "acp-9f328d39c4ac2947f00d",
+    "label": "VENOM",
+    "walletAddress": "0xf785C51B30D869757d3fB34f178591b6D33b6CbD"
+  },
+  {
+    "alias": "virgen",
+    "apiKey": "acp-5245b63ccf304d0b0176",
+    "label": "Virgen Capital",
+    "walletAddress": "0xA2c55E445A4b584e73d799E42431ec121A65edD0"
+  },
+  {
+    "alias": "welles",
+    "apiKey": "acp-76b5a4f3fb10464bd835",
+    "label": "Welles Wilder",
+    "walletAddress": "0x57e3a4877fa63d3803a15daeB2C7ac0fE30583cE"
+  }
+]
+```
+
+---
+
+## 🎯 WHAT YOU NEED TO IMPLEMENT
+
+### 1. Load Agents
+Parse the JSON above and store agents in memory. Each agent has:
+- `alias`: Short name (e.g., "raichu")
+- `apiKey`: ACP API key for trading (e.g., "acp-8fccbd4e63140922bbc2")
+- `label`: Display name (e.g., "Super Saiyan Raichu")
+- `walletAddress`: Ethereum address
+
+### 2. Trading Functions
+
+Implement these 4 core functions using **Degen Claw ACP API**:
+
+#### a) openPosition(agentAlias, pair, side, size, leverage, tpPercent, slPercent, currentPrice)
+
+**API Call:**
+```
+POST https://api.agdp.io/degen-acp/job
+Authorization: Bearer <agent.apiKey>
+Content-Type: application/json
+
+Body:
+{
+  "service": "perp_trade",
+  "action": "open",
+  "params": {
+    "pair": "BTC",
+    "side": "long",
+    "size": "50",
+    "leverage": 5,
+    "takeProfit": "100395.00",  // Calculated from tpPercent
+    "stopLoss": "95060.00"       // Calculated from slPercent
+  }
+}
+```
+
+**TP/SL Calculation:**
+- If side = "long":
+  - TP = currentPrice × (1 + tpPercent / 100)
+  - SL = currentPrice × (1 - slPercent / 100)
+- If side = "short":
+  - TP = currentPrice × (1 - tpPercent / 100)
+  - SL = currentPrice × (1 + slPercent / 100)
+
+#### b) closePosition(agentAlias, pair, side)
+
+**API Call:**
+```
+POST https://api.agdp.io/degen-acp/job
+Authorization: Bearer <agent.apiKey>
+
+Body:
+{
+  "service": "perp_trade",
+  "action": "close",
+  "params": {
+    "pair": "BTC",
+    "side": "long"
+  }
+}
+```
+
+#### c) modifyPosition(agentAlias, pair, side, leverage?, takeProfit?, stopLoss?)
+
+**API Call:**
+```
+POST https://api.agdp.io/degen-acp/job
+Authorization: Bearer <agent.apiKey>
+
+Body:
+{
+  "service": "perp_modify",
+  "params": {
+    "pair": "BTC",
+    "side": "long",
+    "leverage": 10,
+    "takeProfit": "105000",
+    "stopLoss": "92000"
+  }
+}
+```
+
+#### d) getPositions(agentAlias)
+
+**API Call:**
+```
+GET https://dgclaw-app-production.up.railway.app/acp/positions/<walletAddress>
+No authentication required
+```
+
+Returns account balance, positions, PnL, liquidation prices.
+
+---
+
+## 🤖 EXAMPLE COMMANDS FOR YOUR BOT
+
+Implement these command patterns:
+
+```
+/open raichu BTC long 50 5x tp=3.5 sl=2
+→ Opens BTC long for "raichu" agent, $50 size, 5x leverage, 3.5% TP, 2% SL
+
+/close venom ETH short
+→ Closes ETH short position for "venom" agent
+
+/modify doctorstrange BTC long leverage=10 tp=105000 sl=92000
+→ Modifies existing position leverage and TP/SL
+
+/balance friday
+→ Shows account balance and open positions for "friday" agent
+
+/positions all
+→ Shows all open positions across all 12 agents
+```
+
+---
+
+## ⚙️ IMPLEMENTATION STEPS
+
+1. **Parse agents JSON** into a Map or Object for quick lookup by alias
+2. **Implement 4 core functions** (open, close, modify, getPositions)
+3. **Add TP/SL calculation helper**
+4. **Add retry logic** (3 attempts with 2s, 4s, 6s delays)
+5. **Add error handling** for:
+   - Invalid agent alias
+   - Insufficient balance
+   - Position too small (< 11 USDC)
+   - Already has position
+6. **Add logging** for all trades
+7. **Test with small positions** (15 USDC) before production
+
+---
+
+## 📝 READY-TO-USE CODE
+
+See attached file: `degen-claw-trader.js`
+
+This file contains working implementations of:
+- openPosition()
+- closePosition()
+- modifyPosition()
+- calculateTPSL()
+- executeTradeWithRetry()
+
+**Copy and adapt this code to your bot's architecture.**
+
+---
+
+## ✅ SUCCESS CRITERIA
+
+Your integration is complete when:
+
+1. ✅ Bot can list all 12 agents
+2. ✅ Bot can open positions with calculated TP/SL for any agent
+3. ✅ Bot can close positions for any agent
+4. ✅ Bot can modify leverage/TP/SL for any agent
+5. ✅ Bot can fetch positions and balances for any agent
+6. ✅ All commands work via Telegram/Discord/CLI (depending on your bot type)
+7. ✅ Error handling and retries work
+8. ✅ All trades are logged
+
+---
+
+## 🧪 TEST SCENARIO
+
+After implementation, run this test:
+
+```
+Step 1: Open position
+/open raichu BTC long 15 3x tp=3 sl=2
+(with current BTC price = 97000)
+
+Expected:
+- TP calculated: 99910
+- SL calculated: 95060
+- API request sent with raichu's API key: acp-8fccbd4e63140922bbc2
+- Response: { ok: true, data: { jobId: "job_xyz" } }
+- Bot replies: "✅ Opened BTC long for Raichu | $15 @ 3x | TP: $99,910 | SL: $95,060"
+
+Step 2: Check positions
+/positions raichu
+
+Expected:
+- Shows BTC long position with entry price, PnL, liquidation price
+
+Step 3: Close position
+/close raichu BTC long
+
+Expected:
+- API request sent
+- Response: { ok: true }
+- Bot replies: "✅ Closed BTC long for Raichu"
+
+Step 4: Multi-agent test
+/open venom ETH short 20 4x tp=2.5 sl=1.5
+/open friday SOL long 30 5x tp=4 sl=2
+
+Expected:
+- Both trades execute with their respective API keys
+- Both agents' positions tracked independently
+```
+
+---
+
+## 🔗 RESOURCES
+
+- **API Docs:** DEGEN_CLAW_BOT_INTEGRATION_GUIDE.md
+- **Code Examples:** degen-claw-trader.js
+- **Agent List:** DEGEN_CLAW_AGENTS.md
+
+---
+
+## 💡 IMPORTANT NOTES
+
+1. Each agent has its own API key - **never mix them up**
+2. Minimum position size is **11 USDC** (system rejects below this)
+3. TP/SL must be **prices**, not percentages (calculate before sending)
+4. Use agent's **wallet address** to fetch positions
+5. **Retry on failures** - network can be unstable
+6. **Log everything** - essential for debugging
+
+---
+
+**Now implement the integration and test with one agent first (e.g., "raichu"), then scale to all 12!** 🚀
+
+===========================================

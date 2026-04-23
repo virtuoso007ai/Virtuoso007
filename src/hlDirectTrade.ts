@@ -6,6 +6,7 @@
 import { privateKeyToAccount } from "viem/accounts";
 import { HttpTransport, ExchangeClient, InfoClient } from "@nktkas/hyperliquid";
 import type { AgentEntry } from "./agents.js";
+import { hlApiWalletAddressFromEnv, hlTradeEnvSuffix } from "./hlAgentSecretsFromEnv.js";
 
 function hlApiBase(): string {
   const u = process.env.HYPERLIQUID_INFO_URL?.trim();
@@ -34,7 +35,7 @@ function masterAddress(agent: AgentEntry): `0x${string}` {
   if (!m || !/^0x[0-9a-fA-F]{40}$/i.test(m)) {
     throw new Error(
       "HL v2: walletAddress (master) yok — AGENTS_JSON veya HL_MASTER_ADDRESS_" +
-        agent.alias.replace(/[^a-z0-9]/gi, "").toUpperCase() +
+        hlTradeEnvSuffix(agent.alias) +
         " / tek agent HL_MASTER_ADDRESS (dgclaw trade.ts)."
     );
   }
@@ -45,7 +46,7 @@ export function assertHlDirectAgent(agent: AgentEntry): void {
   if (!agent.hlApiWalletKey?.trim()) {
     throw new Error(
       "HL v2: hlApiWalletKey yok — AGENTS_JSON'a ekleyin veya Railway/Vercel'de HL_API_WALLET_KEY_" +
-        agent.alias.replace(/[^a-z0-9]/gi, "").toUpperCase() +
+        hlTradeEnvSuffix(agent.alias) +
         " (dgclaw trade.ts ile aynı; tek agent ise HL_API_WALLET_KEY)."
     );
   }
@@ -63,6 +64,129 @@ function createClients(agent: AgentEntry): {
   const info = new InfoClient({ transport });
   const exchange = new ExchangeClient({ wallet: account, transport });
   return { exchange, info, master: masterAddress(agent) };
+}
+
+function pushUniqueAddr(out: `0x${string}`[], addr: string | undefined): void {
+  const a = addr?.trim();
+  if (!a || !/^0x[0-9a-fA-F]{40}$/i.test(a)) return;
+  const low = a.toLowerCase();
+  if (out.some((x) => x.toLowerCase() === low)) return;
+  out.push(a as `0x${string}`);
+}
+
+/**
+ * HL clearinghouse / openOrders `user` adayları:
+ * Önce API imza cüzdanı (emir genelde burada görünür), sonra `hlWallet`, sonra master (`walletAddress`).
+ */
+export function hlHyperliquidUserCandidates(agent: AgentEntry): `0x${string}`[] {
+  const out: `0x${string}`[] = [];
+  const pk = agent.hlApiWalletKey?.trim();
+  if (pk) {
+    try {
+      pushUniqueAddr(out, privateKeyToAccount(normalizePk(pk)).address);
+    } catch {
+      /* geçersiz pk — createClients zaten hata verir */
+    }
+  }
+  pushUniqueAddr(out, hlApiWalletAddressFromEnv(agent.alias));
+  pushUniqueAddr(out, agent.hlWallet?.trim());
+  pushUniqueAddr(out, masterAddress(agent));
+  return out;
+}
+
+function hlCandidateDebug(agent: AgentEntry): string {
+  const parts: string[] = [];
+  const pk = agent.hlApiWalletKey?.trim();
+  if (pk) {
+    try {
+      parts.push(`api=${privateKeyToAccount(normalizePk(pk)).address}`);
+    } catch {
+      parts.push("api=(gecersiz)");
+    }
+  } else {
+    parts.push("api=(yok)");
+  }
+  const envAddr = hlApiWalletAddressFromEnv(agent.alias);
+  parts.push(envAddr ? `envAddr=${envAddr}` : "envAddr=(yok)");
+  parts.push(agent.hlWallet?.trim() ? `hl=${agent.hlWallet.trim()}` : "hl=(yok)");
+  const m = agent.walletAddress?.trim();
+  parts.push(m ? `master=${m}` : "master=(yok)");
+  return parts.join(", ");
+}
+
+function extractAssetPositions(state: unknown): Array<{ position?: { coin?: string; szi?: string | number } }> {
+  if (!state || typeof state !== "object") return [];
+  const o = state as Record<string, unknown>;
+  if (Array.isArray(o.assetPositions)) {
+    return o.assetPositions as Array<{ position?: { coin?: string; szi?: string | number } }>;
+  }
+  const ch = o.clearinghouseState;
+  if (ch && typeof ch === "object") {
+    const ap = (ch as Record<string, unknown>).assetPositions;
+    if (Array.isArray(ap)) {
+      return ap as Array<{ position?: { coin?: string; szi?: string | number } }>;
+    }
+  }
+  return [];
+}
+
+function normalizePerpCoinSymbol(coin: string): string {
+  const u = coin.trim().toUpperCase();
+  if (u.includes("-")) return u.split("-")[0]!;
+  if (u.includes("/")) return u.split("/")[0]!;
+  return u;
+}
+
+function perpPositionMatchesPair(positionCoin: string, pairRaw: string): boolean {
+  const want = pairRaw.toUpperCase().replace(/-USD$/i, "").trim();
+  const base = normalizePerpCoinSymbol(positionCoin);
+  const full = positionCoin.toUpperCase();
+  return (
+    base === want ||
+    full === want ||
+    full === `${want}-USD` ||
+    full.startsWith(`${want}-`)
+  );
+}
+
+export type AgentPerpPositionHit = {
+  stateUser: `0x${string}`;
+  coin: string;
+  szi: string;
+};
+
+export async function findAgentPerpPosition(
+  info: InfoClient,
+  agent: AgentEntry,
+  pairRaw: string
+): Promise<AgentPerpPositionHit> {
+  const want = pairRaw.toUpperCase().replace(/-USD$/i, "").trim();
+  const candidates = hlHyperliquidUserCandidates(agent);
+  const glimpses: string[] = [];
+  for (const user of candidates) {
+    const state = await info.clearinghouseState({ user });
+    const rows = extractAssetPositions(state);
+    for (const row of rows) {
+      const pos = row.position;
+      if (!pos?.coin || pos.szi == null) continue;
+      const coin = String(pos.coin);
+      const szi = String(pos.szi);
+      glimpses.push(`${coin}:${szi}`);
+      if (!perpPositionMatchesPair(coin, want)) continue;
+      if (Math.abs(parseFloat(szi)) < 1e-12) continue;
+      return { stateUser: user, coin, szi };
+    }
+  }
+  throw new Error(
+    `${want} için açık pozisyon yok (Hyperliquid clearinghouse). Denenen: ${candidates.join(", ")}. ` +
+      (glimpses.length > 0 ? `Satırlar: ${glimpses.slice(0, 14).join("; ")}` : "(assetPositions boş)") +
+      ` | cfg: ${hlCandidateDebug(agent)}` +
+      ` — Railway/local AGENTS_JSON'da master V2 + hlWallet + HL_API_WALLET_KEY_${hlTradeEnvSuffix(agent.alias)} uyumlu olmalı.`
+  );
+}
+
+function orderCoinMatchesPair(orderCoin: string, pairRaw: string): boolean {
+  return perpPositionMatchesPair(orderCoin, pairRaw);
 }
 
 type AssetMeta = { name: string; szDecimals: number; maxLeverage: number };
@@ -208,25 +332,20 @@ export async function hlDirectOpen(agent: AgentEntry, p: HlDirectOpenParams): Pr
 }
 
 export async function hlDirectClose(agent: AgentEntry, pairRaw: string): Promise<unknown> {
-  const { exchange, info, master } = createClients(agent);
-  const pair = pairRaw.toUpperCase();
-  const { index: assetId } = await getAssetIndex(info, pair);
+  const { exchange, info } = createClients(agent);
+  const hit = await findAgentPerpPosition(info, agent, pairRaw);
+  const baseSym = normalizePerpCoinSymbol(hit.coin);
+  const { index: assetId, meta } = await getAssetIndex(info, baseSym);
 
-  const state = await info.clearinghouseState({ user: master });
-  const position = state.assetPositions.find(
-    (row: { position: { coin: string; szi: string } }) =>
-      row.position.coin.toUpperCase() === pair
-  );
-  if (!position) {
-    throw new Error(`${pair} için açık pozisyon yok`);
-  }
-
-  const posSize = parseFloat(position.position.szi);
+  const posSize = parseFloat(hit.szi);
   const isBuy = posSize < 0;
-  const sz = Math.abs(posSize).toString();
+  const sz = Math.abs(posSize).toFixed(meta.szDecimals);
 
   const mids = await info.allMids();
-  const midPrice = parseFloat(mids[pair] ?? "");
+  const midPrice = parseFloat(mids[baseSym] ?? "");
+  if (!Number.isFinite(midPrice) || midPrice <= 0) {
+    throw new Error(`${baseSym} için mid fiyat alınamadı`);
+  }
   const slippage = isBuy ? 1.01 : 0.99;
   const orderPrice = formatPrice(midPrice * slippage);
 
@@ -253,26 +372,20 @@ export type HlDirectModifyParams = {
 };
 
 export async function hlDirectModify(agent: AgentEntry, p: HlDirectModifyParams): Promise<unknown> {
-  const { exchange, info, master } = createClients(agent);
-  const pair = p.pair.toUpperCase();
-  const { index: assetId } = await getAssetIndex(info, pair);
+  const { exchange, info } = createClients(agent);
+  const pair = p.pair.toUpperCase().replace(/-USD$/i, "").trim();
 
   if (!p.leverage && !p.stopLoss && !p.takeProfit) {
     throw new Error("modify: en az leverage, SL veya TP gerekli");
   }
 
-  const state = await info.clearinghouseState({ user: master });
-  const position = state.assetPositions.find(
-    (row: { position: { coin: string; szi: string } }) =>
-      row.position.coin.toUpperCase() === pair
-  );
-  if (!position) {
-    throw new Error(`${pair} için açık pozisyon yok`);
-  }
+  const hit = await findAgentPerpPosition(info, agent, pair);
+  const baseSym = normalizePerpCoinSymbol(hit.coin);
+  const { index: assetId, meta } = await getAssetIndex(info, baseSym);
 
-  const posSize = parseFloat(position.position.szi);
+  const posSize = parseFloat(hit.szi);
   const isLong = posSize > 0;
-  const sz = Math.abs(posSize).toString();
+  const sz = Math.abs(posSize).toFixed(meta.szDecimals);
 
   const out: Record<string, unknown> = {};
 
@@ -284,10 +397,10 @@ export async function hlDirectModify(agent: AgentEntry, p: HlDirectModifyParams)
     });
   }
 
-  const openOrders = await info.openOrders({ user: master });
+  const openOrders = await info.openOrders({ user: hit.stateUser });
   const tpslOrders = openOrders.filter(
     (o: { coin?: string; orderType?: string }) =>
-      o.coin?.toUpperCase() === pair && String(o.orderType ?? "").includes("trigger")
+      orderCoinMatchesPair(String(o.coin ?? ""), pair) && String(o.orderType ?? "").includes("trigger")
   );
   for (const order of tpslOrders) {
     try {
@@ -358,10 +471,13 @@ export async function hlDirectCancelAllOpenOrdersForPair(
   agent: AgentEntry,
   pairRaw: string
 ): Promise<{ cancelled: number; oids: number[]; errors: string[] }> {
-  const { exchange, info, master } = createClients(agent);
+  const { exchange, info } = createClients(agent);
   const base = pairRaw.toUpperCase().replace(/-USD$/i, "").trim();
-  const orders = await info.openOrders({ user: master });
-  const list = Array.isArray(orders) ? orders : [];
+  const list: Array<{ coin?: string; oid?: number }> = [];
+  for (const user of hlHyperliquidUserCandidates(agent)) {
+    const orders = await info.openOrders({ user });
+    if (Array.isArray(orders)) list.push(...(orders as Array<{ coin?: string; oid?: number }>));
+  }
   const hits = list.filter((o: { coin?: string }) => {
     const c = String(o.coin ?? "").toUpperCase();
     const sym = c.includes("-") ? c.split("-")[0] : c.includes("/") ? c.split("/")[0] : c;
@@ -369,12 +485,15 @@ export async function hlDirectCancelAllOpenOrdersForPair(
   });
   const oids: number[] = [];
   const errors: string[] = [];
+  const cancelledOids = new Set<number>();
   for (const o of hits) {
     const oid = typeof o.oid === "number" ? o.oid : Number(o.oid);
     if (!Number.isFinite(oid)) {
       errors.push(`oid okunamadi: ${JSON.stringify(o).slice(0, 80)}`);
       continue;
     }
+    if (cancelledOids.has(oid)) continue;
+    cancelledOids.add(oid);
     const coinRaw = String(o.coin ?? "");
     const perpSym = coinRaw.includes("-")
       ? coinRaw.split("-")[0]
@@ -392,4 +511,37 @@ export async function hlDirectCancelAllOpenOrdersForPair(
     }
   }
   return { cancelled: oids.length, oids, errors };
+}
+
+/** Spot ↔ Perp USDC (HL v2). */
+export async function hlDirectUsdClassTransfer(
+  agent: AgentEntry,
+  params: { amount: string; toPerp: boolean }
+): Promise<unknown> {
+  const { exchange } = createClients(agent);
+  const amt = params.amount.trim();
+  if (!/^[0-9]+(\.[0-9]+)?$/.test(amt) || parseFloat(amt) <= 0) {
+    throw new Error("amount pozitif USDC olmalı");
+  }
+  return exchange.usdClassTransfer({ amount: amt, toPerp: params.toPerp });
+}
+
+/** Perp → L1 withdraw3. */
+export async function hlDirectWithdraw3(
+  agent: AgentEntry,
+  params: { destination: `0x${string}`; amount: string }
+): Promise<unknown> {
+  const { exchange } = createClients(agent);
+  const amt = params.amount.trim();
+  if (!/^[0-9]+(\.[0-9]+)?$/.test(amt) || parseFloat(amt) <= 0) {
+    throw new Error("amount pozitif USDC olmalı");
+  }
+  const dest = params.destination.trim();
+  if (!/^0x[0-9a-fA-F]{40}$/i.test(dest)) {
+    throw new Error("destination geçerli 0x adres olmalı");
+  }
+  return exchange.withdraw3({
+    destination: dest as `0x${string}`,
+    amount: amt,
+  });
 }

@@ -1,0 +1,8 @@
+# OpenClaw / Moltbot "extraDirs" ornegi — path'leri kendi makinede duzelt.
+# Bu repo kok: d:\super-saiyan-raichu
+
+skills:
+  load:
+    extraDirs:
+      - d:/super-saiyan-raichu/virtuals-protocol-acp
+      - d:/super-saiyan-raichu/dgclaw-skill

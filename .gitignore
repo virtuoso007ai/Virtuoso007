@@ -1,4 +1,6 @@
 node_modules/
+vendor/
+
 .env
 .env.local
 # HL API imza anahtarlari — tek dosya (ornek: secrets/hl-api-wallets.env.example)
@@ -6,6 +8,38 @@ secrets/hl-api-wallets.env
 agents.local.json
 agents.manual.json
 AGENTS_JSON.paste.txt
+agents_json.paste.txt
 AGENTS_JSON_FULL_WITH_HL.paste.txt
+RAILWAY_VERCEL_HL_ENV.paste.txt
 AGENTS_HL_WALLETS.json
 *.log
+
+# ACP v2 / dgclaw-skill (local secrets)
+vendor/dgclaw-skill/.env
+.dgclaw-join-keys/
+acp-cli-v2/config.json
+
+virtuals-protocol-acp/node_modules/
+virtuals-protocol-acp/config.json
+
+telegram-degen-bot/node_modules/
+telegram-degen-bot/dist/
+telegram-degen-bot/.env
+telegram-degen-bot/.env.local
+telegram-degen-bot/AGENTS_JSON.paste.txt
+telegram-degen-bot/agents_json.paste.txt
+telegram-degen-bot/agents.local.json
+telegram-degen-bot/hl-per-agent-env/
+telegram-degen-bot/secrets/hl-api-wallets.env
+scripts/acp-cli-dirs.json
+
+degen-dashboard/node_modules/
+degen-dashboard/.next/
+degen-dashboard/out/
+degen-dashboard/.vercel
+
+.DS_Store
+
+# Kök monorepoda hl-per-agent-env (README hariç)
+hl-per-agent-env/*.env
+hl-per-agent-env/_vault/

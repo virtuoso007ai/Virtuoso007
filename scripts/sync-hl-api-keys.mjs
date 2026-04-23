@@ -1,22 +1,29 @@
 /**
- * Hyperliquid API wallet private key'leri tek dosyada:
- *   telegram-degen-bot/secrets/hl-api-wallets.env  (gitignore — repoya girmez)
+ * secrets/hl-api-wallets.env + hl-per-agent-env/<alias>.env → telegram-degen-bot/.env
  *
- * Bu script, o dosyadaki HL_API_WALLET_KEY_<ALIAS> satırlarını telegram-degen-bot/.env içine yazar
- * (bot + loadAgents / applyHlTradeEnvToAgent ile uyumlu).
+ * --bootstrap: hl-per-agent-env içindeki tüm *.env dosyalarından topla ve
+ *   secrets/hl-api-wallets.env dosyasını yaz/güncelle (HL_API_WALLET_KEY_<ALIAS>,
+ *   varsa HL_API_WALLET_ADDRESS_<ALIAS>). Mevcut secrets içeriği korunur; aynı anahtar dosyadan ezilir.
  *
- * Öncelik: secrets/hl-api-wallets.env
- * Yoksa: hl-per-agent-env/<alias>.env içindeki HL_API_WALLET_KEY (geriye dönük)
- *
- * İlk kurulum / dağınık dosyalardan toplamak için:
- *   node scripts/sync-hl-api-keys.mjs --bootstrap
+ *   npm run hl:sync-api-keys
+ *   npm run hl:bootstrap-secrets
  */
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const root = path.join(__dirname, "..");
+
+/** Script .../telegram-degen-bot/scripts veya .../telegram-degen-bot/telegram-degen-bot/scripts altında olabilir. */
+function resolveRoot() {
+  const oneUp = path.join(__dirname, "..");
+  if (fs.existsSync(path.join(oneUp, "hl-per-agent-env"))) return oneUp;
+  const twoUp = path.join(__dirname, "..", "..");
+  if (fs.existsSync(path.join(twoUp, "hl-per-agent-env"))) return twoUp;
+  return oneUp;
+}
+
+const root = resolveRoot();
 const secretsPath = path.join(root, "secrets", "hl-api-wallets.env");
 const hlDir = path.join(root, "hl-per-agent-env");
 const envPath = path.join(root, ".env");
@@ -41,14 +48,21 @@ function parseDotEnv(content) {
   return m;
 }
 
-function envKeyForAlias(alias) {
-  const sfx = alias
+function aliasSuffix(alias) {
+  return alias
     .trim()
     .toLowerCase()
     .replace(/^@/, "")
     .replace(/[^a-z0-9]/g, "")
     .toUpperCase();
-  return `HL_API_WALLET_KEY_${sfx}`;
+}
+
+function envKeyForAlias(alias) {
+  return `HL_API_WALLET_KEY_${aliasSuffix(alias)}`;
+}
+
+function envAddressKeyForAlias(alias) {
+  return `HL_API_WALLET_ADDRESS_${aliasSuffix(alias)}`;
 }
 
 function upsertEnvKey(content, key, value) {
@@ -76,10 +90,23 @@ function collectFromPerAgentDir() {
     const alias = f.replace(/\.env$/i, "");
     if (!alias || alias === "README") continue;
     const p = path.join(hlDir, f);
-    const map = parseDotEnv(fs.readFileSync(p, "utf-8"));
+    let raw;
+    try {
+      raw = fs.readFileSync(p, "utf-8");
+    } catch {
+      continue;
+    }
+    const map = parseDotEnv(raw);
     const pk = String(map.HL_API_WALLET_KEY ?? "").trim();
-    if (!/^0x[0-9a-fA-F]{64}$/i.test(pk)) continue;
-    out[envKeyForAlias(alias)] = pk;
+    if (/^0x[0-9a-fA-F]{64}$/i.test(pk)) {
+      out[envKeyForAlias(alias)] = pk;
+    }
+    const addr = String(
+      map.HL_API_WALLET_ADDRESS ?? map.HL_SUBACCOUNT_ADDRESS ?? ""
+    ).trim();
+    if (/^0x[0-9a-fA-F]{40}$/i.test(addr)) {
+      out[envAddressKeyForAlias(alias)] = addr;
+    }
   }
   return out;
 }
@@ -90,25 +117,39 @@ function collectFromSecretsFile() {
   /** @type {Record<string, string>} */
   const out = {};
   for (const [k, v] of Object.entries(map)) {
-    if (!k.startsWith("HL_API_WALLET_KEY_")) continue;
-    const pk = String(v).trim();
-    if (!/^0x[0-9a-fA-F]{64}$/i.test(pk)) continue;
-    out[k] = pk;
+    if (k.startsWith("HL_API_WALLET_KEY_")) {
+      const pk = String(v).trim();
+      if (!/^0x[0-9a-fA-F]{64}$/i.test(pk)) continue;
+      out[k] = pk;
+      continue;
+    }
+    if (k.startsWith("HL_API_WALLET_ADDRESS_")) {
+      const addr = String(v).trim();
+      if (!/^0x[0-9a-fA-F]{40}$/i.test(addr)) continue;
+      out[k] = addr;
+    }
   }
   return out;
 }
 
 function bootstrapSecretsFile() {
-  const merged = collectFromPerAgentDir();
+  const fromFiles = collectFromPerAgentDir();
+  const fromExisting = collectFromSecretsFile();
+  /** Mevcut secrets satırları korunur; hl-per-agent-env aynı anahtarı günceller. */
+  const merged = { ...fromExisting, ...fromFiles };
   const keys = Object.keys(merged).sort();
   if (keys.length === 0) {
-    console.error("hl-per-agent-env icinde gecerli HL_API_WALLET_KEY yok.");
+    console.error(
+      "hl-per-agent-env icinde gecerli HL_API_WALLET_KEY / ADDRESS yok.\n" +
+        "Her agent icin: hl-per-agent-env/<alias>.env icinde HL_API_WALLET_KEY=0x...64hex"
+    );
     process.exit(1);
   }
   fs.mkdirSync(path.dirname(secretsPath), { recursive: true });
   const lines = [
-    "# Hyperliquid API wallet private keys (0x + 64 hex). Bu dosya .gitignore — commit etme.",
-    "# Railway / Vercel: ayni isimli Environment Variables (HL_API_WALLET_KEY_RAICHU vb.)",
+    "# Hyperliquid — hl-per-agent-env/*.env → npm run hl:bootstrap-secrets ile uretildi",
+    "# Private keys (0x + 64 hex) + isteğe bağlı HL_API_WALLET_ADDRESS_<ALIAS> (40 hex)",
+    "# Railway / Vercel: aynı isimli Environment Variables",
     "",
   ];
   for (const k of keys) {
@@ -116,7 +157,11 @@ function bootstrapSecretsFile() {
   }
   lines.push("");
   fs.writeFileSync(secretsPath, lines.join("\n"), "utf-8");
-  console.error(`Olusturuldu: ${secretsPath} (${keys.length} anahtar)`);
+  const pkCount = keys.filter((k) => k.startsWith("HL_API_WALLET_KEY_")).length;
+  const addrCount = keys.filter((k) => k.startsWith("HL_API_WALLET_ADDRESS_")).length;
+  console.error(
+    `Yazildi: ${secretsPath} (${pkCount} HL_API_WALLET_KEY_*, ${addrCount} HL_API_WALLET_ADDRESS_*)`
+  );
 }
 
 function syncToDotEnv() {

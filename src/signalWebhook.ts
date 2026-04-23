@@ -1,4 +1,5 @@
 import type { AgentEntry } from "./agents.js";
+import { tryForumTradeOpen } from "./degenForum.js";
 import { hlDirectOpen } from "./hlDirectTrade.js";
 import { fetchOpenHlCoins } from "./hyperliquidPositions.js";
 import { resolveWalletAddress } from "./wallet-resolve.js";
@@ -116,6 +117,16 @@ export async function executeSignalAutoTrade(
         limitPrice,
       });
       lastOpenByAgentPair.set(key, Date.now());
+      void tryForumTradeOpen(agent, {
+        pair,
+        side,
+        sizeUsd,
+        leverage: lev,
+        stopLoss,
+        takeProfit,
+        orderType,
+        limitPrice,
+      }).catch((err) => console.error("[forum] signal", err));
       lines.push(`[${agent.alias}] ${pair} ${side} HL v2: ${extractSummary(data)}`);
     } catch (e) {
       lines.push(`[${agent.alias}] HL v2 hata: ${errMsg(e)}`);

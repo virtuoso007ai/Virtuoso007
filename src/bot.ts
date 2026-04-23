@@ -1,9 +1,14 @@
 import axios from "axios";
 import { Telegraf, type Context } from "telegraf";
 import type { AgentEntry } from "./agents.js";
-import { getAgent } from "./agents.js";
+import { getAgent, getHlWallet } from "./agents.js";
+import { tryForumTradeClose, tryForumTradeOpen } from "./degenForum.js";
 import { degenAccountErrorHint, fetchDgAccount, formatAccountBlock } from "./account.js";
-import { fetchDgPositions, formatPositionBlock } from "./positions.js";
+import {
+  fetchDgPositions,
+  formatPositionBlock,
+  type DgPositionRow,
+} from "./positions.js";
 import { resolveWalletAddress } from "./wallet-resolve.js";
 import {
   hlDirectOpen,
@@ -37,6 +42,25 @@ function commandRest(ctx: Context): string[] {
   const t = ctx.message && "text" in ctx.message ? ctx.message.text : "";
   if (!t) return [];
   return t.trim().split(/\s+/).slice(1);
+}
+
+function normHlPair(p: string): string {
+  return p.trim().toUpperCase().replace(/-USD$/i, "");
+}
+
+/** Kapatmadan önce forum metni için Degen pozisyon satırı (uPnL / entry). */
+async function snapshotPositionForPair(
+  agent: AgentEntry,
+  pairNorm: string
+): Promise<DgPositionRow | null> {
+  try {
+    const w = getHlWallet(agent);
+    if (!w) return null;
+    const rows = await fetchDgPositions(w);
+    return rows.find((r) => normHlPair(String(r.pair ?? "")) === pairNorm) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** HL tetik / limit fiyatı (pozitif ondalık). */
@@ -528,6 +552,16 @@ export function registerBot(
         orderType,
         limitPrice,
       });
+      void tryForumTradeOpen(agent, {
+        pair,
+        side,
+        sizeUsd,
+        leverage,
+        stopLoss,
+        takeProfit,
+        orderType,
+        limitPrice,
+      }).catch((err) => console.error("[forum] /open", err));
       await ctx.reply(`Tamam.\n${JSON.stringify(data, null, 2)}`);
     } catch (e) {
       await ctx.reply(`Hata: ${errText(e).slice(0, 3500)}`);
@@ -537,7 +571,7 @@ export function registerBot(
   bot.command("close", async (ctx) => {
     const parts = commandRest(ctx);
     const [alias, pairRaw] = parts;
-    const pair = pairRaw?.toUpperCase();
+    const pair = pairRaw?.toUpperCase().replace(/-USD$/i, "");
 
     const agent = requireAgent(agents, alias);
     if (!agent) {
@@ -554,7 +588,11 @@ export function registerBot(
     );
 
     try {
+      const posSnap = await snapshotPositionForPair(agent, pair);
       const data = await hlDirectClose(agent, pair);
+      void tryForumTradeClose(agent, pair, posSnap).catch((err) =>
+        console.error("[forum] /close", err)
+      );
       await ctx.reply(JSON.stringify(data, null, 2));
     } catch (e) {
       await ctx.reply(`Hata: ${errText(e).slice(0, 3500)}`);
@@ -608,7 +646,7 @@ export function registerBot(
   bot.command("modify", async (ctx) => {
     const parts = commandRest(ctx);
     const [alias, pairRaw, slRaw, tpRaw, levRaw] = parts;
-    const pair = pairRaw?.toUpperCase();
+    const pair = pairRaw?.toUpperCase().replace(/-USD$/i, "");
 
     const skipToken = (s: string | undefined): boolean =>
       s == null || /^[-_]$|^(skip|yok|none)$/i.test(String(s).trim());
@@ -786,6 +824,16 @@ export function registerBot(
           orderType,
           limitPrice,
         });
+        void tryForumTradeOpen(agent, {
+          pair,
+          side,
+          sizeUsd,
+          leverage,
+          stopLoss,
+          takeProfit,
+          orderType,
+          limitPrice,
+        }).catch((err) => console.error("[forum] openmulti", err));
         results.push(`✅ ${alias}: ${JSON.stringify(data).slice(0, 180)}`);
       } catch (e) {
         results.push(`❌ ${alias}: ${errText(e).slice(0, 200)}`);
@@ -851,6 +899,16 @@ export function registerBot(
           orderType,
           limitPrice,
         });
+        void tryForumTradeOpen(agent, {
+          pair,
+          side,
+          sizeUsd: sizeUsdAll,
+          leverage,
+          stopLoss,
+          takeProfit,
+          orderType,
+          limitPrice,
+        }).catch((err) => console.error("[forum] openall", err));
         results.push(`✅ ${alias}: ${JSON.stringify(data).slice(0, 180)}`);
       } catch (e) {
         results.push(`❌ ${alias}: ${errText(e).slice(0, 200)}`);
@@ -872,7 +930,7 @@ export function registerBot(
     }
 
     const aliasesList = aliasesRaw.split(",").map(s => s.trim()).filter(Boolean);
-    const pair = pairRaw.toUpperCase();
+    const pair = pairRaw.toUpperCase().replace(/-USD$/i, "");
 
     await ctx.reply(`🔄 ${aliasesList.length} agent için kapatma işlemi:\n${aliasesList.join(", ")} → ${pair}…`);
 
@@ -884,7 +942,11 @@ export function registerBot(
         continue;
       }
       try {
+        const posSnap = await snapshotPositionForPair(agent, pair);
         const data = await hlDirectClose(agent, pair);
+        void tryForumTradeClose(agent, pair, posSnap).catch((err) =>
+          console.error("[forum] closemulti", err)
+        );
         results.push(`✅ ${alias}: ${JSON.stringify(data).slice(0, 180)}`);
       } catch (e) {
         results.push(`❌ ${alias}: ${errText(e).slice(0, 200)}`);
@@ -903,14 +965,18 @@ export function registerBot(
     }
 
     const aliasesList = Array.from(agents.keys());
-    const pair = pairRaw.toUpperCase();
+    const pair = pairRaw.toUpperCase().replace(/-USD$/i, "");
 
     await ctx.reply(`🔄 TÜM agentlar için kapatma (${aliasesList.length} agent):\n${pair}…`);
 
     const results: string[] = [];
     for (const [alias, agent] of agents) {
       try {
+        const posSnap = await snapshotPositionForPair(agent, pair);
         const data = await hlDirectClose(agent, pair);
+        void tryForumTradeClose(agent, pair, posSnap).catch((err) =>
+          console.error("[forum] closeall", err)
+        );
         results.push(`✅ ${alias}: ${JSON.stringify(data).slice(0, 180)}`);
       } catch (e) {
         results.push(`❌ ${alias}: ${errText(e).slice(0, 200)}`);

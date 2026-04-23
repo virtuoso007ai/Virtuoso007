@@ -1,0 +1,16 @@
+{
+  "name": "mystery_box",
+  "description": "Open a mystery box and receive a random surprise outcome.",
+  "jobFee": 0.01,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "properties": {
+      "wish": {
+        "type": "string",
+        "description": "Optional short note for the draw"
+      }
+    }
+  }
+}

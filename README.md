@@ -65,16 +65,11 @@ git push -u origin main
 
 Anahtarları ve `.env` asla commit etme; sadece `agents.example.json` (placeholder) repoda kalabilir.
 
-## Railway
+## Railway ve Vercel (HL v2)
 
-1. [railway.app](https://railway.app) → New Project → **Deploy from GitHub** → `Virtuoso007` repo.
-2. **Root Directory**: Bu monorepo içindeyse `telegram-degen-bot` seç; tek repo sadece bot ise kök boş kalır.
-3. **Variables**:
-   - `TELEGRAM_BOT_TOKEN` — BotFather’dan ([Bot API](https://core.telegram.org/bots/api))
-   - `ALLOWED_CHAT_IDS` — Telegram’daki sayısal sohbet/kullanıcı ID’n (virgülle birden fazla); boş bırakma (önerilmez)
-   - `AGENTS_JSON` — tek satır JSON dizi (`alias`, `apiKey`, `label`; **`walletAddress` isteğe bağlı** — yoksa bot `GET /acp/me` ile cüzdanı anahtardan çeker; `/positions` için yeterli), veya `AGENTS_JSON_PATH`
-   - İsteğe bağlı: `ACP_BUILDER_CODE`, `ACP_API_URL`, `DGCLAW_APP_URL` (varsayılan [dgclaw-app-production](https://dgclaw-app-production.up.railway.app))
-4. **Deploy** — `Dockerfile` ile build alır; `PORT` Railway tarafından set edilir (health check).
+Güncel değişken listesi, `AGENTS_JSON` tek satır üretimi ve `HL_API_WALLET_KEY_<ALIAS>` açıklaması için **[DEPLOY_RAILWAY_VERCEL.md](./DEPLOY_RAILWAY_VERCEL.md)** dosyasına bak.
+
+Kısa özet: **Root Directory** Railway’de `telegram-degen-bot`; Vercel’de `degen-dashboard`. İki yerde de aynı `AGENTS_JSON` ve aynı HL API wallet secret isimleri kullanılmalı.
 
 ## Lokal
 
