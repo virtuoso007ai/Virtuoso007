@@ -32,13 +32,19 @@ function Push-Subtree {
   if ($LASTEXITCODE -ne 0) { throw "subtree split failed: $Prefix" }
 
   $name = "gh-$($Prefix -replace '[^a-z0-9]', '-')"
-  git remote remove $name 2>$null
+  $remotes = @(git remote 2>$null)
+  if ($remotes -contains $name) {
+    git remote remove $name
+  }
   git remote add $name $RemoteUrl
   Write-Host ">>> push $BranchName -> $RemoteUrl (main)" -ForegroundColor Cyan
   git push $name "${BranchName}:main" --force
   if ($LASTEXITCODE -ne 0) { throw "git push failed: $Prefix" }
   git branch -D $BranchName 2>$null
-  git remote remove $name
+  $remotesAfter = @(git remote 2>$null)
+  if ($remotesAfter -contains $name) {
+    git remote remove $name
+  }
 }
 
 Push-Subtree -Prefix "telegram-degen-bot" -RemoteUrl $TelegramRemote -BranchName "_split_telegram"
